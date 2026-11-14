@@ -86,7 +86,14 @@ _Last updated: 2026-11-14_
 - [ ] Real-device check of delivery and background refresh (can't be verified in simulator CI)
 - [ ] Time-sensitive delivery needs the Time Sensitive Notifications entitlement (release setup)
 
-### Phase 8+ — not started
+### Phase 8 — Morning briefing "Pofuduk Günaydın" ✅ (CI: 105 core, 24 VM, 1 UI tests pass)
+- [x] `MorningBriefingEngine`: greet once per day between the chosen time and noon; morning start temp → afternoon peak, rain by time of day (likely vs possible), wind, UV, clothing, MGM warnings first (serious tone), demo/stale disclosure
+- [x] Settings: on/off, 07:00 / 07:30 / 08:00 / 08:30 / custom, speak automatically or text only, text-notification alternative, location shortcut (reached from the bell → "Pofuduk Günaydın")
+- [x] Greeting when the app opens or returns from the background in the morning; sleepy-to-awake animation
+- [x] Optional morning notification at the chosen time from the latest daily forecast (not sent if the forecast would be >18 h old at delivery; source + time stated; deduplicated; quiet hours don't apply because the user chose the time)
+- [x] Demo data follows the container clock (deterministic tests)
+
+### Phase 9+ — not started
 See ROADMAP.md.
 
 ## Known limitations
