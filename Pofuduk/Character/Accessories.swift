@@ -87,6 +87,18 @@ struct ScarfView: View {
     }
 }
 
+/// "Z" for sleeping, drawn as a path.
+struct ZGlyph: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
+    }
+}
+
 /// Small symbols that make mood readable at a glance.
 struct MoodDecorations: View {
     let mood: CharacterMood
@@ -98,10 +110,10 @@ struct MoodDecorations: View {
             case .sleeping:
                 ForEach(0..<3, id: \.self) { i in
                     let phase = (time * 0.6 + Double(i) / 3).truncatingRemainder(dividingBy: 1)
-                    Text("z").font(.system(.footnote, design: .rounded).weight(.bold))
-                        .scaleEffect(1 + CGFloat(i) * 0.3)
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // scales, but stays inside the drawing
-                        .foregroundStyle(PofudukColor.accent.opacity(1 - phase))
+                    // Drawn, not text: purely decorative, so it isn't a text element at all.
+                    ZGlyph()
+                        .stroke(PofudukColor.accent.opacity(1 - phase), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                        .frame(width: 9 + CGFloat(i) * 3, height: 9 + CGFloat(i) * 3)
                         .position(x: 160 + CGFloat(phase) * 16, y: 50 - CGFloat(phase) * 40)
                 }
             case .thinking:
@@ -124,8 +136,8 @@ struct MoodDecorations: View {
                         .position(x: 10 - CGFloat(i) * 6, y: 112)
                 }
             case .surprised:
-                Text("!").font(.system(.title, design: .rounded).weight(.heavy))
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                Image(systemName: "exclamationmark")
+                    .font(.system(size: 26, weight: .heavy))
                     .foregroundStyle(PofudukColor.accent).position(x: 170, y: 36)
             case .warning:
                 Image(systemName: "exclamationmark.triangle.fill")
