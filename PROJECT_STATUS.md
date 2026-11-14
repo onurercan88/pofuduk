@@ -109,7 +109,15 @@ _Last updated: 2026-11-14_
 - [x] Banner (level text + distinct shape per level, validity, "+N"), detail screen (level, hazard, area, start/end, description, official source, "forecasts are never warnings" note), warning mode for any verified warning, warnings first in briefings, MGM notifications (Phase 7)
 - [ ] **Blocked externally:** live warnings need written permission and a feed from MGM
 
-### Phase 11+ — not started
+### Phase 11 — Personality & personalization ✅ (CI: 126 core, 35 VM, 1 UI tests pass; settings screen not yet screenshotted)
+- [x] `UserPreferences` (style: Samimi/Şakacı/Sakin, Kısa/Ayrıntılı, speech rate 0.8–1.25×, Turkish voice, subtitle size), stored on device only
+- [x] Style/length change tone only; facts identical across styles; no humour during storms or orange/red warnings; short briefings keep current conditions, rain and strong wind — tested
+- [x] Voice picker (installed tr-TR voices, best quality first; help text if none installed), speed slider, "Sesi dene"
+- [x] Subtitle size (Dynamic Type styles, still scales with iOS text size) for the bubble and transcript
+- [x] Settings screen (gear): Pofuduk, Ses, Altyazılar, Konum, Bildirimler, Pofuduk Günaydın, units (°C, km/sa), language (Türkçe), data sources, privacy, "Verilerimi sil" (confirmation; clears cache, location, notifications + log, morning, preferences, sound, conversation), Hakkında
+- [x] Character reaction: tapping idle Pofuduk → happy (celebrating in playful style); tapping while speaking → pause/resume
+
+### Phase 12 — not started
 See ROADMAP.md.
 
 ## Known limitations
