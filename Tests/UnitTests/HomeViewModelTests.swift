@@ -42,7 +42,8 @@ final class HomeViewModelTests: XCTestCase {
         func stop() {}
     }
 
-    private func makeDemoViewModel(speech: PreviewSpeechService, recognizer: StubRecognizer = StubRecognizer()) -> HomeViewModel {
+    private func makeDemoViewModel(speech: PreviewSpeechService, recognizer: StubRecognizer? = nil) -> HomeViewModel {
+        let recognizer = recognizer ?? StubRecognizer()
         let defaults = UserDefaults(suiteName: "HomeViewModelTests")!
         defaults.removePersistentDomain(forName: "HomeViewModelTests")
         let container = DependencyContainer(speech: speech, speechRecognizer: recognizer,
