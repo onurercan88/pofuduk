@@ -78,7 +78,7 @@ private struct SampleHomeScreen: View {
                     .font(PofudukFont.title).foregroundStyle(PofudukColor.ink)
                     .padding(.top, 56)
                 OfficialWarningBanner(warning: warning) {}
-                CharacterFigure(appearance: CharacterAppearance(mood: .warning, theme: .rainy), time: 0)
+                CharacterFigure(appearance: CharacterAppearance(mood: .warning, theme: .rainy), time: CharacterFigure.stillTime)
                     .frame(width: 200, height: 200)
                     .scaleEffect(1.1)
                     .frame(maxWidth: .infinity)

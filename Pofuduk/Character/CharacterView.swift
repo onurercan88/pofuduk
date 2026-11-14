@@ -18,7 +18,8 @@ struct CharacterView: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 // Drawn parts (incl. decorative "z" letters) are hidden; the container carries the description.
-                CharacterFigure(appearance: appearance, time: reduceMotion ? 0 : t)
+                // Reduce Motion: freeze at a moment with open eyes (t = 0 falls inside a blink).
+                CharacterFigure(appearance: appearance, time: reduceMotion ? CharacterFigure.stillTime : t)
                     .frame(width: 200, height: 200)
                     .scaleEffect(size / 200)
                     .frame(width: size, height: size)
@@ -51,6 +52,9 @@ struct CharacterView: View {
 struct CharacterFigure: View {
     let appearance: CharacterAppearance
     let time: TimeInterval
+
+    /// A frozen moment with open eyes, for still renders and Reduce Motion.
+    static let stillTime: TimeInterval = 1.0
 
     private var mood: CharacterMood { appearance.mood }
     private var theme: WeatherTheme { appearance.theme }

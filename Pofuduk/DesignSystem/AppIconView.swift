@@ -13,7 +13,7 @@ struct AppIconView: View {
                                      center: .center, startRadius: 4, endRadius: 150))
                 .frame(width: 300, height: 300)
                 .offset(x: 250, y: -250)
-            CharacterFigure(appearance: CharacterAppearance(mood: .happy, theme: .cloudy), time: 0)
+            CharacterFigure(appearance: CharacterAppearance(mood: .happy, theme: .cloudy), time: CharacterFigure.stillTime)
                 .frame(width: 200, height: 200)
                 .scaleEffect(4.1)
                 .offset(y: 60)
