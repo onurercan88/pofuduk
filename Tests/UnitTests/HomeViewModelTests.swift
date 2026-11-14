@@ -214,6 +214,41 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(scheduler.scheduled.isEmpty)
     }
 
+    // MARK: - MGM official warnings
+
+    struct StubAlerts: WeatherAlertRepository {
+        let availability: WarningAvailability
+        func warnings(for place: Place, at date: Date) async -> WarningAvailability { availability }
+    }
+
+    func testVerifiedWarningShowsBannerWarningModeAndComesFirst() async throws {
+        let speech = PreviewSpeechService()
+        let now = Date()
+        let w = OfficialWarning(id: "w", level: .orange, hazard: "Kuvvetli yağış", description: "Dikkat.",
+                                provinces: ["İstanbul"], validFrom: now.addingTimeInterval(-3600),
+                                validUntil: now.addingTimeInterval(3600), sourceURL: MGMOfficialPage.warnings)
+        let defaults = UserDefaults(suiteName: "HomeViewModelTests")!
+        defaults.removePersistentDomain(forName: "HomeViewModelTests")
+        let container = DependencyContainer(speech: speech, speechRecognizer: StubRecognizer(),
+                                            location: StubLocationService(.resolved(MockWeatherData.istanbul)),
+                                            alertRepository: StubAlerts(availability: .available([w])),
+                                            liveRepository: DemoLikeRepository())
+        let vm = HomeViewModel(container: container, defaults: defaults)
+        await vm.onAppear()
+        XCTAssertEqual(vm.activeWarnings.map(\.id), ["w"])
+        let firstFact = try XCTUnwrap(vm.briefing?.sentences.firstIndex { $0.contains("MGM tarafından turuncu") })
+        XCTAssertLessThanOrEqual(firstFact, 2, "Warning is prioritized at the start of the briefing")
+        vm.stop()
+        XCTAssertEqual(vm.appearance.mood, .warning)
+    }
+
+    func testUnavailableMGMSourceOffersOfficialPage() async {
+        let vm = makeViewModel(speech: PreviewSpeechService())
+        await vm.onAppear()
+        guard case .unavailable(_, let page)? = vm.warningAvailability else { return XCTFail() }
+        XCTAssertEqual(page, MGMOfficialPage.warnings)
+    }
+
     // MARK: - Travel
 
     func testTravelQuestionAnswersForDestination() async {

@@ -42,6 +42,7 @@ final class HomeViewModel {
     var showClothing = false
     var showNotificationSettings = false
     var showTravel = false
+    var showWarnings = false
     let travel: TravelWeatherViewModel
     private(set) var isMorningBriefing = false
     var notifications: NotificationCoordinator { container.notifications }
@@ -87,6 +88,8 @@ final class HomeViewModel {
         case .loaded: break
         }
         if track.status == .speaking { return CharacterAppearance(mood: .speaking, theme: theme) }
+        // Any verified official warning for this place puts Pofuduk in warning mode.
+        if !activeWarnings.isEmpty { return CharacterAppearance(mood: .warning, theme: theme) }
         // A serious main briefing keeps warning mode even after a casual answer.
         let resting: CharacterMood = briefing?.restingMood == .warning ? .warning : (spoken ?? briefing)?.restingMood ?? .idle
         return CharacterAppearance(mood: resting, theme: theme)

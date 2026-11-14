@@ -202,16 +202,32 @@ struct MGMStatusCard: View {
     }
 }
 
+extension WarningLevel {
+    /// Distinct shape per level, so severity never depends on colour alone.
+    var symbolName: String {
+        switch self {
+        case .green: return "checkmark.circle.fill"
+        case .yellow: return "exclamationmark.circle.fill"
+        case .orange: return "exclamationmark.triangle.fill"
+        case .red: return "exclamationmark.octagon.fill"
+        }
+    }
+    var label: String { "MGM \(turkishName.uppercased(with: Locale(identifier: "tr_TR"))) UYARI" }
+}
+
 struct OfficialWarningBanner: View {
     let warning: OfficialWarning
+    var extraCount = 0
+    let onDetails: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("MGM \(warning.level.turkishName.uppercased(with: Locale(identifier: "tr_TR"))) UYARI", systemImage: "exclamationmark.triangle.fill")
+            Label(warning.level.label, systemImage: warning.level.symbolName)
                 .font(PofudukFont.headline)
             Text(warning.hazard).font(PofudukFont.body.weight(.semibold))
-            if !warning.description.isEmpty { Text(warning.description).font(PofudukFont.caption) }
-            Link("Resmi kaynağı aç", destination: warning.sourceURL).font(PofudukFont.caption.weight(.semibold))
+            Text("Geçerlilik: \(WarningDetailView.validity(warning))").font(PofudukFont.caption)
+            if extraCount > 0 { Text("+\(extraCount) uyarı daha").font(PofudukFont.caption) }
+            Button("Ayrıntılar ve resmi kaynak", action: onDetails).font(PofudukFont.caption.weight(.semibold))
         }
         .foregroundStyle(PofudukColor.ink)
         .padding(16)
@@ -219,8 +235,57 @@ struct OfficialWarningBanner: View {
         .background(PofudukColor.warning(warning.level).opacity(0.25), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(PofudukColor.warning(warning.level), lineWidth: 2))
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(warning.level.label). \(warning.hazard). Geçerlilik \(WarningDetailView.validity(warning)).")
         .accessibilityAddTraits(.isHeader)
     }
+}
+
+/// Full official warning details. Clearly separated from Pofuduk's own forecasts.
+struct WarningDetailView: View {
+    let warnings: [OfficialWarning]
+    @Environment(\.dismiss) private var dismiss
+
+    static func validity(_ w: OfficialWarning) -> String {
+        let tz = TimeZone(identifier: "Europe/Istanbul") ?? .current
+        func f(_ d: Date) -> String { "\(TurkishFormatting.longDate(d, timeZone: tz)) \(TurkishFormatting.clockTime(d, timeZone: tz))" }
+        return "\(f(w.validFrom)) – \(f(w.validUntil))"
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(warnings) { w in
+                    Section {
+                        Label(w.level.label, systemImage: w.level.symbolName)
+                            .font(PofudukFont.headline)
+                            .foregroundStyle(PofudukColor.ink)
+                            .listRowBackground(PofudukColor.warning(w.level).opacity(0.25))
+                        LabeledContent("Tehlike", value: w.hazard)
+                        LabeledContent("Etkilenen bölge", value: (w.provinces + w.districts).joined(separator: ", "))
+                        LabeledContent("Başlangıç", value: Self.validity(w).components(separatedBy: " – ").first ?? "")
+                        LabeledContent("Bitiş", value: Self.validity(w).components(separatedBy: " – ").last ?? "")
+                        if !w.description.isEmpty { Text(w.description) }
+                        Link(destination: w.sourceURL) { Label("Resmi kaynak: MGM", systemImage: "arrow.up.right.square") }
+                    }
+                }
+                Section {
+                    Text("Bu uyarılar Meteoroloji Genel Müdürlüğü'nün resmi kaynağından alınır. Pofuduk'un kendi hava tahminleri resmi uyarı değildir ve hiçbir zaman uyarıya dönüştürülmez.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Resmi Uyarılar")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Kapat") { dismiss() } } }
+        }
+    }
+}
+
+#Preview("Uyarı bandı (örnek, yalnızca önizleme)") {
+    OfficialWarningBanner(warning: OfficialWarning(
+        id: "preview", level: .orange, hazard: "Kuvvetli yağış", description: "Önizleme amaçlı örnek.",
+        provinces: ["İstanbul"], validFrom: Date(), validUntil: Date().addingTimeInterval(6 * 3600),
+        sourceURL: MGMOfficialPage.warnings)) {}
+        .padding()
 }
 
 struct DemoScenarioPicker: View {

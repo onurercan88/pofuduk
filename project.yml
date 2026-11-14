@@ -30,6 +30,8 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.pofuduk.app.refresh]
+        # Set ONLY after MGM grants written permission for an official CAP feed.
+        MGMWarningFeedURL: ""
         NSLocationWhenInUseUsageDescription: "Pofuduk, bulunduğun yerin hava durumunu anlatabilmek için konumunu yalnızca uygulamayı kullanırken alır. Konumun takip edilmez ve paylaşılmaz."
         NSMicrophoneUsageDescription: "Pofuduk'a sesli soru sorabilmen için mikrofon yalnızca sen mikrofon düğmesine bastığında kullanılır."
         NSSpeechRecognitionUsageDescription: "Sesli sorularını anlayabilmek için konuşma tanıma kullanılır. Mümkün olduğunda cihaz üzerinde işlenir."

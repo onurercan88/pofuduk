@@ -20,7 +20,7 @@ final class DependencyContainer {
          speechRecognizer: SpeechRecognizing? = nil,
          location: LocationServicing? = nil,
          notifications: NotificationCoordinator? = nil,
-         alertRepository: WeatherAlertRepository = UnavailableMGMAlertRepository(),
+         alertRepository: WeatherAlertRepository? = nil,
          summaryEngine: WeatherSummaryEngine = WeatherSummaryEngine(),
          personality: CharacterPersonalityEngine = CharacterPersonalityEngine(),
          liveRepository: WeatherRepository? = nil,
@@ -34,6 +34,7 @@ final class DependencyContainer {
         self.speechRecognizer = speechRecognizer ?? SpeechRecognitionService()
         self.location = location ?? LocationService(ipProvider: Self.makeIPProvider(keychain: keychain, http: http))
         self.alertRepository = alertRepository
+            ?? MGMAlertRepository(provider: ConfiguredMGMWarningProvider(feedURL: Self.mgmFeedURL, http: http))
         self.summaryEngine = summaryEngine
         self.personality = personality
         self.initialDemoScenario = initialDemoScenario
@@ -79,6 +80,14 @@ final class DependencyContainer {
         let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Weather")
         return CachedWeatherRepository(engine: WeatherProviderFallbackEngine(providers: providers),
                                        cache: FileWeatherCacheStore(directory: cacheDir))
+    }
+
+    /// Authorized MGM CAP feed URL from Info.plist (`MGMWarningFeedURL`). Empty until MGM grants written
+    /// permission → the app shows "unavailable" + the official MGM page. See API_INTEGRATIONS.md.
+    private static var mgmFeedURL: URL? {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "MGMWarningFeedURL") as? String,
+              !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        return URL(string: raw)
     }
 
     /// IP lookup is offered only when a WeatherAPI key exists (no other IP service is used).

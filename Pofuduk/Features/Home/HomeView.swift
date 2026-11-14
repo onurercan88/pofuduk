@@ -18,7 +18,9 @@ struct HomeView: View {
                     HomeHeader(viewModel: viewModel)
 
                     if let warning = viewModel.activeWarnings.first {
-                        OfficialWarningBanner(warning: warning)
+                        OfficialWarningBanner(warning: warning, extraCount: viewModel.activeWarnings.count - 1) {
+                            viewModel.showWarnings = true
+                        }
                     }
 
                     hero
@@ -106,6 +108,10 @@ struct HomeView: View {
                                                  viewModel.showNotificationSettings = false
                                                  viewModel.chooseCityInstead()
                                              })
+                }
+            Color.clear
+                .sheet(isPresented: $viewModel.showWarnings) {
+                    WarningDetailView(warnings: viewModel.activeWarnings)
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showTravel) {
