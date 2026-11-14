@@ -33,6 +33,11 @@ final class HomeViewModel {
         self.container = container
         self.defaults = defaults
         self.isSoundOn = defaults.object(forKey: Self.soundKey) as? Bool ?? true
+        // Launch argument `-pofuduk.demoScenario stormy` (used by CI screenshots) selects the demo scenario.
+        if let raw = defaults.string(forKey: "pofuduk.demoScenario"),
+           let scenario = MockWeatherData.Scenario(rawValue: raw) {
+            self.demoScenario = scenario
+        }
         container.speech.onEvent = { [weak self] event in self?.handle(event) }
     }
 

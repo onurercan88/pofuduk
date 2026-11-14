@@ -23,6 +23,31 @@ jobs:
           xcodebuild -version
           SIM_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
           echo "Simulator: $SIM_ID"
-          xcodebuild test -project Pofuduk.xcodeproj -scheme Pofuduk \
+          echo "SIM_ID=$SIM_ID" >> "$GITHUB_ENV"
+          xcodebuild test -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
             -destination "id=$SIM_ID" CODE_SIGNING_ALLOWED=NO 2>&1 \
             | grep -E "error:|warning: .*Pofuduk|Test Case .*(passed|failed)|\*\* (BUILD|TEST)" | head -n 200
+      - name: Screenshots (every demo scenario, light + dark)
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/Pofuduk.app
+          xcrun simctl boot "$SIM_ID" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_ID" -b
+          xcrun simctl status_bar "$SIM_ID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$SIM_ID" "$APP"
+          mkdir -p screenshots
+          shoot() { # scenario appearance
+            xcrun simctl ui "$SIM_ID" appearance "$2"
+            xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
+            xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario "$1"
+            sleep 8
+            xcrun simctl io "$SIM_ID" screenshot "screenshots/$1-$2.png"
+          }
+          for s in sunny rainyAfternoon stormy snowy cloudy windy; do shoot "$s" light; done
+          for s in sunny rainyAfternoon stormy; do shoot "$s" dark; done
+          ls -la screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 14
