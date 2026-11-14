@@ -66,7 +66,13 @@ struct HomeView: View {
                 .padding(.bottom, 32)
             }
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
             .refreshable { await viewModel.refresh() }
+            .safeAreaInset(edge: .bottom) {
+                if !viewModel.isDemoMode || viewModel.snapshot != nil {
+                    AskBar(conversation: viewModel.conversation)
+                }
+            }
         }
         .task { await viewModel.onAppear() }
         .sheet(isPresented: $viewModel.showTranscript) {

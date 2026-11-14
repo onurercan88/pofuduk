@@ -39,6 +39,9 @@ final class HomeViewModel {
     var showTranscript = false
     var locationPrompt: LocationPrompt?
     var showLocationPicker = false
+    /// What the bubble currently speaks/shows: the main briefing or the latest answer.
+    private(set) var spoken: Briefing?
+    let conversation: ConversationViewModel
 
     private let container: DependencyContainer
     private let defaults: UserDefaults
@@ -50,7 +53,13 @@ final class HomeViewModel {
         self.defaults = defaults
         self.isSoundOn = defaults.object(forKey: Self.soundKey) as? Bool ?? true
         self.demoScenario = container.initialDemoScenario
+        self.conversation = ConversationViewModel(service: WeatherQueryService(container: container),
+                                                  recognizer: container.speechRecognizer, now: container.now)
         container.speech.onEvent = { [weak self] event in self?.handle(event) }
+        conversation.currentPlace = { [weak self] in self?.snapshot?.place }
+        conversation.demoScenario = { [weak self] in self?.demoScenario }
+        conversation.onAnswer = { [weak self] answer in self?.present(answer) }
+        conversation.willListen = { [weak self] in self?.container.speech.stop() }
     }
 
     // MARK: - Derived state
@@ -58,6 +67,8 @@ final class HomeViewModel {
     var appearance: CharacterAppearance {
         let theme = briefing?.theme ?? .cloudy
         if isWaking { return CharacterAppearance(mood: .sleeping, theme: theme, isMorningGreeting: true) }
+        if conversation.isListening { return CharacterAppearance(mood: .listening, theme: theme) }
+        if conversation.isThinking { return CharacterAppearance(mood: .thinking, theme: theme) }
         switch loadState {
         case .loading, .idle: return CharacterAppearance(mood: .thinking, theme: theme)
         case .failed: return CharacterAppearance(mood: .error, theme: theme)
@@ -65,7 +76,16 @@ final class HomeViewModel {
         case .loaded: break
         }
         if track.status == .speaking { return CharacterAppearance(mood: .speaking, theme: theme) }
-        return CharacterAppearance(mood: briefing?.restingMood ?? .idle, theme: theme)
+        // A serious main briefing keeps warning mode even after a casual answer.
+        let resting: CharacterMood = briefing?.restingMood == .warning ? .warning : (spoken ?? briefing)?.restingMood ?? .idle
+        return CharacterAppearance(mood: resting, theme: theme)
+    }
+
+    /// Speaks an answer through the same subtitle/speech pipeline as the briefing.
+    func present(_ answer: Briefing) {
+        container.speech.stop()
+        spoken = answer
+        playOrReplay()
     }
 
     var isDemo: Bool { snapshot?.source == .demo }
@@ -126,6 +146,7 @@ final class HomeViewModel {
         locationPrompt = nil
         showLocationPicker = false
         container.location.setMode(.ipApproximate)
+        conversation.resetContext()
         await load(autoSpeak: true, greetSleepily: false)
     }
 
@@ -133,6 +154,7 @@ final class HomeViewModel {
         locationPrompt = nil
         showLocationPicker = false
         container.location.selectManual(place)
+        conversation.resetContext()
         await load(autoSpeak: true, greetSleepily: false, forceRefresh: true)
     }
 
@@ -158,7 +180,7 @@ final class HomeViewModel {
     }
 
     func playOrReplay() {
-        guard let briefing else { return }
+        guard let briefing = spoken ?? briefing else { return }
         track.load(briefing.sentences)
         if isSoundOn, container.speech.hasTurkishVoice {
             container.speech.speak(briefing.sentences, rate: SpeechService.defaultRate)
@@ -192,6 +214,7 @@ final class HomeViewModel {
 
     private func load(autoSpeak: Bool, greetSleepily: Bool, forceRefresh: Bool = false) async {
         container.speech.stop()
+        spoken = nil
         loadState = .loading
 
         let place: Place

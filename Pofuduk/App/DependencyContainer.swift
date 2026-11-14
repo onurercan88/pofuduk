@@ -5,6 +5,7 @@ import PofudukCore
 @MainActor
 final class DependencyContainer {
     let speech: SpeechServicing
+    let speechRecognizer: SpeechRecognizing
     let location: LocationServicing
     let alertRepository: WeatherAlertRepository
     let summaryEngine: WeatherSummaryEngine
@@ -15,6 +16,7 @@ final class DependencyContainer {
     private let liveRepository: WeatherRepository
 
     init(speech: SpeechServicing? = nil,
+         speechRecognizer: SpeechRecognizing? = nil,
          location: LocationServicing? = nil,
          alertRepository: WeatherAlertRepository = UnavailableMGMAlertRepository(),
          summaryEngine: WeatherSummaryEngine = WeatherSummaryEngine(),
@@ -27,6 +29,7 @@ final class DependencyContainer {
         keychain.seedFromEnvironmentInDebug()
         let http = URLSessionHTTPClient()
         self.speech = speech ?? SpeechService()
+        self.speechRecognizer = speechRecognizer ?? SpeechRecognitionService()
         self.location = location ?? LocationService(ipProvider: Self.makeIPProvider(keychain: keychain, http: http))
         self.alertRepository = alertRepository
         self.summaryEngine = summaryEngine

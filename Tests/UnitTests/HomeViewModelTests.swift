@@ -32,6 +32,69 @@ final class HomeViewModelTests: XCTestCase {
         func selectManual(_ place: Place) { preference = LocationPreference(mode: .manual, manualPlace: place) }
     }
 
+    @MainActor
+    final class StubRecognizer: SpeechRecognizing {
+        var authorized = true
+        var isOnDeviceSupported = true
+        private(set) var onResult: ((String, Bool) -> Void)?
+        func requestAuthorization() async -> Bool { authorized }
+        func start(onResult: @escaping (String, Bool) -> Void) throws { self.onResult = onResult }
+        func stop() {}
+    }
+
+    private func makeDemoViewModel(speech: PreviewSpeechService, recognizer: StubRecognizer = StubRecognizer()) -> HomeViewModel {
+        let defaults = UserDefaults(suiteName: "HomeViewModelTests")!
+        defaults.removePersistentDomain(forName: "HomeViewModelTests")
+        let container = DependencyContainer(speech: speech, speechRecognizer: recognizer,
+                                            location: StubLocationService(.resolved(MockWeatherData.istanbul)),
+                                            liveRepository: FailingRepository(), initialDemoScenario: .rainyAfternoon)
+        return HomeViewModel(container: container, defaults: defaults)
+    }
+
+    func testTypedQuestionIsAnsweredAndSpokenWithMatchingSubtitles() async {
+        let speech = PreviewSpeechService()
+        let vm = makeDemoViewModel(speech: speech)
+        await vm.onAppear()
+        vm.conversation.inputText = "Yarın hava nasıl?"
+        await vm.conversation.send()
+        XCTAssertTrue(vm.spoken?.sentences.first?.hasPrefix("Yarın İstanbul'da") == true, vm.spoken?.fullText ?? "")
+        XCTAssertEqual(speech.spokenSentences, vm.spoken?.sentences)
+        XCTAssertEqual(vm.track.sentences, vm.spoken?.sentences)
+        XCTAssertEqual(vm.conversation.history.count, 2)
+    }
+
+    func testFollowUpQuestionKeepsTomorrow() async {
+        let vm = makeDemoViewModel(speech: PreviewSpeechService())
+        await vm.onAppear()
+        await vm.conversation.ask("Yarın hava nasıl?")
+        await vm.conversation.ask("Peki yağmur var mı?")
+        XCTAssertTrue(vm.spoken?.fullText.hasPrefix("Yarın") == true, vm.spoken?.fullText ?? "")
+    }
+
+    func testMicrophoneDeniedExplainsAndDoesNotListen() async {
+        let recognizer = StubRecognizer()
+        recognizer.authorized = false
+        let vm = makeDemoViewModel(speech: PreviewSpeechService(), recognizer: recognizer)
+        await vm.conversation.toggleListening()
+        XCTAssertFalse(vm.conversation.isListening)
+        XCTAssertNotNil(vm.conversation.microphoneMessage)
+    }
+
+    func testVoiceQuestionShowsListeningThenAnswers() async throws {
+        let recognizer = StubRecognizer()
+        recognizer.isOnDeviceSupported = false
+        let vm = makeDemoViewModel(speech: PreviewSpeechService(), recognizer: recognizer)
+        await vm.onAppear()
+        await vm.conversation.toggleListening()
+        XCTAssertTrue(vm.conversation.isListening)
+        XCTAssertEqual(vm.appearance.mood, .listening)
+        XCTAssertNotNil(vm.conversation.microphoneMessage, "Server-based recognition must be disclosed")
+        recognizer.onResult?("Bugün şemsiye gerekir mi", true)
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertFalse(vm.conversation.isListening)
+        XCTAssertTrue(vm.spoken?.fullText.contains("şemsiye") == true, vm.spoken?.fullText ?? "")
+    }
+
     private func makeLiveViewModel(location: StubLocationService,
                                    repository: WeatherRepository = DemoLikeRepository()) -> HomeViewModel {
         let defaults = UserDefaults(suiteName: "HomeViewModelTests")!
