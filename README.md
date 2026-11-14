@@ -34,4 +34,4 @@ Core tests anywhere Swift runs: `cd PofudukCore && swift test` (Windows: `script
 | Demo mode | launch argument `-pofuduk.demoScenario sunny\|rainyAfternoon\|stormy\|snowy\|cloudy\|windy` | live data |
 
 ## Documents
-PRD · ARCHITECTURE · ROADMAP · API_INTEGRATIONS · PRIVACY · NOTIFICATIONS · DEVELOPMENT · PROJECT_STATUS · RELEASE_CHECKLIST · APP_STORE_METADATA
+PRD · ARCHITECTURE · ROADMAP · API_INTEGRATIONS · PRIVACY · NOTIFICATIONS · DEVELOPMENT · DEVICE_TESTING · PROJECT_STATUS · RELEASE_CHECKLIST · APP_STORE_METADATA
