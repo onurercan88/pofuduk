@@ -101,7 +101,15 @@ _Last updated: 2026-11-14_
 - [x] No route or road information is ever claimed (footnote on the screen)
 - [ ] Saved trips (future feature per spec)
 
-### Phase 10+ — not started
+### Phase 10 — MGM official warnings ✅ code / ⛔ live data blocked on MGM permission (CI: 122 core, 32 VM, 1 UI tests pass)
+- [x] Investigation: no documented/authorized MGM feed; legal notice requires prior permission; MeteoAlarm excludes Turkey (details in API_INTEGRATIONS.md, with a draft request to MGM)
+- [x] `WeatherAlertMatcher` (active, ≥ yellow, province/district, sorted by severity) — tested: none, yellow, orange, red, expired, not yet valid, another province, district
+- [x] `CAPWarningParser` (CAP 1.2, Turkish info preferred, awareness level / severity) — tested
+- [x] `ConfiguredMGMWarningProvider` + `MGMAlertRepository`: off until an authorized feed URL is configured; a failure is "unavailable" with the official page (verified URL)
+- [x] Banner (level text + distinct shape per level, validity, "+N"), detail screen (level, hazard, area, start/end, description, official source, "forecasts are never warnings" note), warning mode for any verified warning, warnings first in briefings, MGM notifications (Phase 7)
+- [ ] **Blocked externally:** live warnings need written permission and a feed from MGM
+
+### Phase 11+ — not started
 See ROADMAP.md.
 
 ## Known limitations
