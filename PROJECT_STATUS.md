@@ -74,7 +74,19 @@ _Last updated: 2026-11-14_
 - [x] Home card + detail screen (today/tomorrow, items, reasons, "Pofuduk anlatsın", non-medical disclaimer)
 - [x] Tests: hot, cold, windy, rainy, large morning/evening difference, mild day not noteworthy, no data, tomorrow + briefing
 
-### Phase 7+ — not started
+### Phase 7 — Weather notifications ✅ (CI: 96 core, 20 VM, 1 UI tests pass)
+- [x] `RainNotificationEngine`: rain/snow soon (user lead time + probability threshold), heavy rain (amounts only), thunderstorm, strong wind, tomorrow's temperature change, verified MGM warnings; 6 h trust horizon; never from stale forecasts; source in every message
+- [x] Quiet hours (wrap midnight); only orange/red official warnings break through (time-sensitive)
+- [x] Dedup via delivery log (delivered → never re-sent; pending → replaced by newer forecast)
+- [x] Per-category preferences, lead time, threshold, quiet hours (settings screen via bell button)
+- [x] Permission asked only when the user enables notifications; denied → explained + Settings link
+- [x] `UNUserNotificationCenter` scheduling; `BGAppRefreshTask` best-effort refresh using the last coarsened place (no background location)
+- [x] Demo data never schedules notifications
+- [x] NOTIFICATIONS.md: local vs backend/APNs comparison; PRIVACY.md updated
+- [ ] Real-device check of delivery and background refresh (can't be verified in simulator CI)
+- [ ] Time-sensitive delivery needs the Time Sensitive Notifications entitlement (release setup)
+
+### Phase 8+ — not started
 See ROADMAP.md.
 
 ## Known limitations
