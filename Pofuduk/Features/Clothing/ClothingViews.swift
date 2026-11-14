@@ -71,7 +71,7 @@ struct ClothingDetailView: View {
                                 }
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .background(PofudukColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 .accessibilityElement(children: .combine)
                             }
                         }

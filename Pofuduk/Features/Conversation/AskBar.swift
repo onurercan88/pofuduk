@@ -20,7 +20,7 @@ struct AskBar: View {
                             Button(s) { conversation.inputText = s; Task { await conversation.send() } }
                                 .font(PofudukFont.caption.weight(.semibold))
                                 .padding(.horizontal, 12).padding(.vertical, 7)
-                                .background(.ultraThinMaterial, in: Capsule())
+                                .background(PofudukColor.surface, in: Capsule())
                                 .foregroundStyle(PofudukColor.ink)
                         }
                     }
@@ -34,7 +34,7 @@ struct AskBar: View {
                     .submitLabel(.send)
                     .onSubmit { Task { await conversation.send() } }
                     .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(.regularMaterial, in: Capsule())
+                    .background(PofudukColor.surfaceStrong, in: Capsule())
                     .overlay(Capsule().strokeBorder(conversation.isListening ? PofudukColor.accent : PofudukColor.surfaceStroke,
                                                     lineWidth: conversation.isListening ? 2 : 1))
                     .accessibilityLabel("Soru")
@@ -56,6 +56,6 @@ struct AskBar: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 6)
-        .background(.bar)
+        .background(PofudukColor.surfaceStrong)
     }
 }

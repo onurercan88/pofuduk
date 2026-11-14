@@ -54,7 +54,7 @@ struct SubtitleBubble: View {
         .padding(18)
         .background(alignment: .top) {
             BubbleShape()
-                .fill(.regularMaterial)
+                .fill(PofudukColor.surfaceStrong)
                 .overlay(BubbleShape().stroke(PofudukColor.surfaceStroke, lineWidth: 1))
                 .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
         }

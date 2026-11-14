@@ -7,7 +7,10 @@ enum PofudukColor {
     /// Text on `ink`-filled surfaces (always high contrast).
     static let inkInverse = Color(light: .white, dark: .init(red: 0.10, green: 0.11, blue: 0.20))
     static let inkSecondary = Color(light: .init(red: 0.36, green: 0.38, blue: 0.52), dark: .init(red: 0.78, green: 0.80, blue: 0.90))
-    static let surface = Color(light: .white.opacity(0.62), dark: .init(red: 0.16, green: 0.17, blue: 0.27).opacity(0.72))
+    /// Card surfaces. Used instead of system materials so they follow the night-theme palette switch
+    /// (materials kept a light look under the override and failed the contrast audit).
+    static let surface = Color(light: .white.opacity(0.72), dark: .init(red: 0.16, green: 0.17, blue: 0.27).opacity(0.82))
+    static let surfaceStrong = Color(light: .white.opacity(0.94), dark: .init(red: 0.13, green: 0.14, blue: 0.23).opacity(0.96))
     static let surfaceStroke = Color(light: .white.opacity(0.9), dark: .white.opacity(0.12))
     /// Light variant ≈ 5.9:1 on white (WCAG AA for small text); found by the accessibility audit.
     static let accent = Color(light: .init(red: 0.36, green: 0.32, blue: 0.82), dark: .init(red: 0.67, green: 0.64, blue: 1.0))

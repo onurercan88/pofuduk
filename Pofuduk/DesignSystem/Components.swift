@@ -9,7 +9,7 @@ struct SoftCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(PofudukColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(PofudukColor.surfaceStroke, lineWidth: 1))
     }
 }
@@ -33,7 +33,7 @@ struct RoundIconButton: View {
                         Circle().fill(PofudukColor.accent.gradient)
                             .shadow(color: PofudukColor.accent.opacity(0.4), radius: 10, y: 4)
                     } else {
-                        Circle().fill(.ultraThinMaterial)
+                        Circle().fill(PofudukColor.surface)
                             .overlay(Circle().strokeBorder(PofudukColor.surfaceStroke, lineWidth: 1))
                     }
                 }

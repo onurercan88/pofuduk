@@ -312,7 +312,7 @@ struct DemoScenarioPicker: View {
                             Text(title(s))
                                 .font(PofudukFont.caption.weight(.semibold))
                                 .padding(.horizontal, 14).padding(.vertical, 8)
-                                .background(s == selected ? AnyShapeStyle(PofudukColor.accent) : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
+                                .background(s == selected ? AnyShapeStyle(PofudukColor.accent) : AnyShapeStyle(PofudukColor.surface), in: Capsule())
                                 .foregroundStyle(s == selected ? Color.white : PofudukColor.ink)
                         }
                         .accessibilityAddTraits(s == selected ? .isSelected : [])
