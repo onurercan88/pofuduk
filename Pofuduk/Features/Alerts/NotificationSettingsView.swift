@@ -5,6 +5,8 @@ import PofudukCore
 /// "Yağmur Başlamadan Haber Ver" and other notification preferences. Honest about iOS limits.
 struct NotificationSettingsView: View {
     let coordinator: NotificationCoordinator
+    var placeName: String?
+    var onChangeLocation: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     private let configurable: [NotificationCategory] = [.rainSoon, .heavyRain, .severeWeather, .strongWind, .temperatureChange, .mgmWarning]
@@ -12,6 +14,19 @@ struct NotificationSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    NavigationLink {
+                        MorningBriefingSettingsView(coordinator: coordinator, placeName: placeName, onChangeLocation: onChangeLocation)
+                    } label: {
+                        HStack {
+                            Label("Pofuduk Günaydın", systemImage: "sun.horizon.fill")
+                            Spacer()
+                            Text(coordinator.morning.isEnabled ? MorningBriefingSettingsView.format(coordinator.morning.minuteOfDay) : "Kapalı")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section {
                     Toggle("Hava bildirimleri", isOn: Binding(
                         get: { coordinator.preferences.isEnabled },

@@ -54,24 +54,52 @@ final class UserNotificationService: NotificationScheduling {
 @Observable
 final class NotificationCoordinator {
     private(set) var preferences: NotificationPreferences
+    private(set) var morning: MorningBriefingSettings
     private(set) var permission: NotificationPermission = .notDetermined
     private(set) var lastPlanned: [PlannedNotification] = []
 
     @ObservationIgnored private let scheduler: NotificationScheduling
     @ObservationIgnored private let store: NotificationPreferenceStore
+    @ObservationIgnored private let morningStore: MorningBriefingStore
     @ObservationIgnored private let log: NotificationDeliveryLog
     @ObservationIgnored private let engine = RainNotificationEngine()
+    @ObservationIgnored private let morningEngine = MorningBriefingEngine()
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var lastSnapshot: WeatherSnapshot?
     @ObservationIgnored private var lastWarnings: [OfficialWarning] = []
 
-    init(scheduler: NotificationScheduling, store: NotificationPreferenceStore, log: NotificationDeliveryLog,
-         now: @escaping () -> Date) {
+    init(scheduler: NotificationScheduling, store: NotificationPreferenceStore, morningStore: MorningBriefingStore,
+         log: NotificationDeliveryLog, now: @escaping () -> Date) {
         self.scheduler = scheduler
         self.store = store
+        self.morningStore = morningStore
         self.log = log
         self.now = now
         self.preferences = store.load()
+        self.morning = morningStore.load()
+    }
+
+    // MARK: - Morning briefing
+
+    func shouldGreet(timeZone: TimeZone) -> Bool {
+        morningEngine.shouldGreet(now: now(), settings: morning, timeZone: timeZone)
+    }
+
+    func markGreeted(timeZone: TimeZone) {
+        morning.lastGreetedDay = MorningBriefingEngine.dayKey(now(), timeZone: timeZone)
+        morningStore.save(morning)
+    }
+
+    func updateMorning(_ change: (inout MorningBriefingSettings) -> Void) async {
+        change(&morning)
+        morningStore.save(morning)
+        await replan()
+    }
+
+    /// Turning on the morning text notification also turns on notifications (asking permission then).
+    func setMorningNotification(_ on: Bool) async {
+        if on && !preferences.isEnabled { await setEnabled(true) }
+        await updateMorning { $0.sendsNotification = on && self.preferences.isEnabled }
     }
 
     func refreshPermission() async {
@@ -113,7 +141,12 @@ final class NotificationCoordinator {
         }
         let current = now()
         log.prune(before: current.addingTimeInterval(-2 * 86_400))
-        let planned = engine.plan(snapshot: snapshot, warnings: lastWarnings, preferences: preferences, log: log, now: current)
+        var planned = engine.plan(snapshot: snapshot, warnings: lastWarnings, preferences: preferences, log: log, now: current)
+        // Morning briefing: user-chosen time, so quiet hours don't apply; still deduplicated.
+        if let m = morningEngine.notification(snapshot: snapshot, settings: morning, now: current),
+           (log.fireDate(for: m.id).map { $0 > current } ?? true) {
+            planned.append(m)
+        }
         await scheduler.replacePending(with: planned, now: current)
         planned.forEach { log.record($0.id, fireDate: $0.fireDate) }
         lastPlanned = planned

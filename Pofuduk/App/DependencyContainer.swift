@@ -41,7 +41,7 @@ final class DependencyContainer {
         self.liveRepository = liveRepository ?? Self.makeLiveRepository(keychain: keychain, http: http)
         self.notifications = notifications ?? NotificationCoordinator(
             scheduler: UserNotificationService(), store: NotificationPreferenceStore(),
-            log: UserDefaultsNotificationLog(), now: now)
+            morningStore: MorningBriefingStore(), log: UserDefaultsNotificationLog(), now: now)
     }
 
     /// Background refresh (best effort): fresh forecast for the last known place → replan notifications.
@@ -88,7 +88,10 @@ final class DependencyContainer {
     }
 
     func weatherRepository(demoScenario: MockWeatherData.Scenario?) -> WeatherRepository {
-        if let demoScenario { return DemoWeatherRepository(scenario: demoScenario) }
+        if let demoScenario {
+            let fixed = now()   // demo data follows the container clock (deterministic tests/previews)
+            return DemoWeatherRepository(scenario: demoScenario, now: { fixed })
+        }
         return liveRepository
     }
 

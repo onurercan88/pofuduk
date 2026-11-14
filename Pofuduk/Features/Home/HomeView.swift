@@ -5,6 +5,7 @@ struct HomeView: View {
     @Bindable var viewModel: HomeViewModel
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -78,6 +79,9 @@ struct HomeView: View {
             }
         }
         .task { await viewModel.onAppear() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await viewModel.sceneDidBecomeActive() } }
+        }
         .sheet(isPresented: $viewModel.showTranscript) {
             TranscriptSheet(sentences: viewModel.track.sentences)
         }
@@ -93,7 +97,12 @@ struct HomeView: View {
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showNotificationSettings) {
-                    NotificationSettingsView(coordinator: viewModel.notifications)
+                    NotificationSettingsView(coordinator: viewModel.notifications,
+                                             placeName: viewModel.snapshot?.place.displayName,
+                                             onChangeLocation: {
+                                                 viewModel.showNotificationSettings = false
+                                                 viewModel.chooseCityInstead()
+                                             })
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showClothing) {

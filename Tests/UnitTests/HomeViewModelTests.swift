@@ -116,7 +116,8 @@ final class HomeViewModelTests: XCTestCase {
     }
 
     private func makeNotificationViewModel(scheduler: StubScheduler, demo: MockWeatherData.Scenario? = nil,
-                                           enabled: Bool) -> HomeViewModel {
+                                           enabled: Bool, hour: Int = 13, morning: MorningBriefingSettings? = nil,
+                                           speech: PreviewSpeechService? = nil) -> HomeViewModel {
         let suite = "HomeViewModelTests.notifications"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
@@ -125,16 +126,65 @@ final class HomeViewModelTests: XCTestCase {
         prefs.isEnabled = enabled
         prefs.quietHours.enabled = false
         store.save(prefs)
+        let morningStore = MorningBriefingStore(defaults: defaults)
+        morningStore.save(morning ?? MorningBriefingSettings())
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!
-        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: 13))!
-        let coordinator = NotificationCoordinator(scheduler: scheduler, store: store, log: InMemoryNotificationLog(), now: { now })
-        let container = DependencyContainer(speech: PreviewSpeechService(), speechRecognizer: StubRecognizer(),
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: hour))!
+        let coordinator = NotificationCoordinator(scheduler: scheduler, store: store, morningStore: morningStore,
+                                                  log: InMemoryNotificationLog(), now: { now })
+        let container = DependencyContainer(speech: speech ?? PreviewSpeechService(), speechRecognizer: StubRecognizer(),
                                             location: StubLocationService(.resolved(MockWeatherData.istanbul)),
                                             notifications: coordinator,
                                             liveRepository: FixedScenarioRepository(scenario: .rainyAfternoon, now: now),
                                             initialDemoScenario: demo, now: { now })
         return HomeViewModel(container: container, defaults: defaults)
+    }
+
+    // MARK: - Morning briefing
+
+    func testMorningGreetingShownOncePerDay() async {
+        let vm = makeNotificationViewModel(scheduler: StubScheduler(status: .notDetermined), demo: .rainyAfternoon,
+                                           enabled: false, hour: 8)
+        await vm.onAppear()
+        XCTAssertTrue(vm.isMorningBriefing)
+        XCTAssertEqual(vm.briefing?.sentences.first, "Günaydın!")
+        await vm.refresh()
+        XCTAssertFalse(vm.isMorningBriefing, "Only the first opening of the day gets the greeting")
+    }
+
+    func testNoMorningGreetingBeforeChosenTime() async {
+        var m = MorningBriefingSettings()
+        m.minuteOfDay = 9 * 60
+        let vm = makeNotificationViewModel(scheduler: StubScheduler(status: .notDetermined), demo: .sunny,
+                                           enabled: false, hour: 8, morning: m)
+        await vm.onAppear()
+        XCTAssertFalse(vm.isMorningBriefing)
+    }
+
+    func testTextOnlyMorningGreeting() async {
+        var m = MorningBriefingSettings()
+        m.speaksAutomatically = false
+        let speech = PreviewSpeechService()
+        let vm = makeNotificationViewModel(scheduler: StubScheduler(status: .notDetermined), demo: .sunny,
+                                           enabled: false, hour: 8, morning: m, speech: speech)
+        await vm.onAppear()
+        XCTAssertTrue(vm.isMorningBriefing)
+        XCTAssertTrue(speech.spokenSentences.isEmpty)
+        XCTAssertEqual(vm.track.status, .finished, "Full text shown without speaking")
+    }
+
+    func testMorningNotificationScheduledWhenOptedIn() async throws {
+        var m = MorningBriefingSettings()
+        m.sendsNotification = true
+        let scheduler = StubScheduler(status: .authorized)
+        let vm = makeNotificationViewModel(scheduler: scheduler, enabled: true, hour: 21, morning: m)
+        await vm.onAppear()
+        let n = try XCTUnwrap(scheduler.scheduled.first { $0.category == .morningBriefing })
+        XCTAssertEqual(n.title, "Günaydın! ☀️")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!
+        XCTAssertEqual(calendar.dateComponents([.day, .hour, .minute], from: n.fireDate), DateComponents(day: 15, hour: 7, minute: 30))
     }
 
     func testLiveForecastSchedulesRainNotification() async throws {

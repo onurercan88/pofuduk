@@ -41,6 +41,7 @@ final class HomeViewModel {
     var showLocationPicker = false
     var showClothing = false
     var showNotificationSettings = false
+    private(set) var isMorningBriefing = false
     var notifications: NotificationCoordinator { container.notifications }
     private(set) var clothingToday: ClothingRecommendation?
     /// What the bubble currently speaks/shows: the main briefing or the latest answer.
@@ -270,7 +271,17 @@ final class HomeViewModel {
                 await container.notifications.refresh(snapshot: snapshot, warnings: activeWarnings)
             }
             self.clothingToday = ClothingRecommendationEngine().recommend(for: snapshot, now: now)
-            self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
+            let notifications = container.notifications
+            if notifications.shouldGreet(timeZone: snapshot.place.timeZone) {
+                // "Pofuduk Günaydın": once per day, from the chosen time until noon.
+                self.briefing = MorningBriefingEngine().briefing(snapshot: snapshot, analysis: analysis, warnings: activeWarnings,
+                                                                 clothing: clothingToday, now: now)
+                notifications.markGreeted(timeZone: snapshot.place.timeZone)
+                isMorningBriefing = true
+            } else {
+                self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
+                isMorningBriefing = false
+            }
             loadState = .loaded
         } catch {
             snapshot = nil
@@ -282,12 +293,23 @@ final class HomeViewModel {
         track.load(briefing?.sentences ?? [])
 
         guard autoSpeak else { return }
-        if greetSleepily, isMorning {
+        if (greetSleepily && isMorning) || isMorningBriefing {
             isWaking = true
             try? await Task.sleep(for: .milliseconds(1300))
             isWaking = false
         }
+        if isMorningBriefing && !container.notifications.morning.speaksAutomatically {
+            track.showAllWithoutAudio()   // text-only morning greeting
+            return
+        }
         playOrReplay()
+    }
+
+    /// Re-opening the app in the morning (from background) shows the daily greeting once.
+    func sceneDidBecomeActive() async {
+        guard hasAppeared, demoScenario == nil, loadState != .loading,
+              let tz = snapshot?.place.timeZone, container.notifications.shouldGreet(timeZone: tz) else { return }
+        await load(autoSpeak: true, greetSleepily: false)
     }
 
     /// No weather is shown or spoken until the user decides how to share their location.
