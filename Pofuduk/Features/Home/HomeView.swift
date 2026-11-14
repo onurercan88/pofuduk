@@ -85,6 +85,8 @@ struct HomeView: View {
                 }
             }
         }
+        // The night sky is always dark, so text must use the dark-mode palette there (found by the a11y audit).
+        .environment(\.colorScheme, viewModel.appearance.theme == .night ? .dark : colorScheme)
         .task { await viewModel.onAppear() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await viewModel.sceneDidBecomeActive() } }
