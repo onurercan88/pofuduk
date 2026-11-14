@@ -33,7 +33,7 @@ struct SettingsView: View {
                         Text("Türkçe ses yüklü değil. iOS Ayarları › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe bölümünden yükleyebilirsin. O zamana kadar altyazılar gösterilir.")
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
-                        Picker("Ses", selection: Binding(get: { prefs.voiceIdentifier }, set: { v in viewModel.updatePreferences { $0.voiceIdentifier = v } })) {
+                        Picker("Türkçe ses", selection: Binding(get: { prefs.voiceIdentifier }, set: { v in viewModel.updatePreferences { $0.voiceIdentifier = v } })) {
                             Text("Otomatik (en iyi kalite)").tag(String?.none)
                             ForEach(viewModel.availableVoices) { v in Text("\(v.name) · \(v.qualityName)").tag(Optional(v.id)) }
                         }

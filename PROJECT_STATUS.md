@@ -117,7 +117,15 @@ _Last updated: 2026-11-14_
 - [x] Settings screen (gear): Pofuduk, Ses, Altyazılar, Konum, Bildirimler, Pofuduk Günaydın, units (°C, km/sa), language (Türkçe), data sources, privacy, "Verilerimi sil" (confirmation; clears cache, location, notifications + log, morning, preferences, sound, conversation), Hakkında
 - [x] Character reaction: tapping idle Pofuduk → happy (celebrating in playful style); tapping while speaking → pause/resume
 
-### Phase 12 — not started
+### Phase 12 — Quality & release prep ✅ (CI: 130 core incl. 4 integration [+1 opt-in live], 36 VM + icon, 5 UI incl. accessibility audit — all pass)
+- [x] Integration tests (provider → fallback → cache → briefing → subtitles; conversation over WeatherAPI; notifications + morning); opt-in live test (`POFUDUK_LIVE_TESTS=1`, passes from Windows)
+- [x] UI tests: home controls, typed question → answer, settings, clothing + travel screens
+- [x] Apple accessibility audit passes. It found and we fixed: accent contrast, the night theme with dark text, the demo badge, decorative text without Dynamic Type, and the clipped question field. Contrast is skipped only for content covered by the ask bar (logged).
+- [x] Hero temperature scales with Dynamic Type; character animation 30 fps
+- [x] Security, performance, error-handling and privacy reviews (RELEASE_CHECKLIST.md); `PrivacyInfo.xcprivacy`
+- [x] App icon rendered from the character in CI (opaque 1024 px) and added to the asset catalog
+- [x] README.md, RELEASE_CHECKLIST.md, APP_STORE_METADATA.md (Turkish metadata, keywords, privacy label, screenshot plan)
+- [ ] Release blockers (see RELEASE_CHECKLIST.md): Open-Meteo commercial licence, WeatherAPI key via backend, WeatherAPI disclaimer wording, MGM permission, Apple developer account/signing, real-device checks
 See ROADMAP.md.
 
 ## Known limitations
