@@ -47,7 +47,7 @@ final class CoreLocationProvider: NSObject {
                      source: .gps)
     }
 
-    static func map(_ status: CLAuthorizationStatus) -> LocationPermission {
+    nonisolated static func map(_ status: CLAuthorizationStatus) -> LocationPermission {
         switch status {
         case .notDetermined: return .notDetermined
         case .authorizedWhenInUse, .authorizedAlways: return .authorized
