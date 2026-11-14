@@ -37,6 +37,9 @@ struct HomeView: View {
                     if let tomorrow = viewModel.tomorrow {
                         TomorrowCard(day: tomorrow)
                     }
+                    if viewModel.snapshot != nil {
+                        TravelCard { viewModel.showTravel = true }
+                    }
                     if let advice = viewModel.briefing?.advice, !advice.isEmpty {
                         AdviceSection(items: advice)
                     }
@@ -103,6 +106,10 @@ struct HomeView: View {
                                                  viewModel.showNotificationSettings = false
                                                  viewModel.chooseCityInstead()
                                              })
+                }
+            Color.clear
+                .sheet(isPresented: $viewModel.showTravel) {
+                    TravelWeatherView(viewModel: viewModel.travel)
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showClothing) {

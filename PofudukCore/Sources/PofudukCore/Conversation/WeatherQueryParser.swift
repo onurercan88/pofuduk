@@ -75,6 +75,11 @@ public struct WeatherQueryParser: Sendable {
                                             "ten", "nin", "in", "un", "nun", "daki", "deki"]
     static let dativeSuffixes: Set<String> = ["a", "e", "ya", "ye"]
 
+    /// DestinationResolver (offline part): the destination province named in free text, if any.
+    public func province(in text: String) -> TurkishProvinces.Province? {
+        parse(text).province
+    }
+
     private func parseProvince(tokens: [String]) -> TurkishProvinces.Province? {
         var matches: [(TurkishProvinces.Province, suffix: String)] = []
         for token in tokens {
@@ -101,6 +106,7 @@ public struct WeatherQueryParser: Sendable {
         if rainWords { return .rain }
         if has("ruzgar", "firtina", "esinti") { return .wind }
         if has("derece", "sicaklik", "soguk", "sicak", "serin", "isi") { return .temperature }
+        if has("gidece", "gidiyor", "gitmek", "gitcem", "yolculuk", "seyahat", "tatil", "ziyaret") { return .travel }
         return .overview
     }
 }

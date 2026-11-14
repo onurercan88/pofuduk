@@ -108,7 +108,7 @@ public struct WeatherAnswerEngine: Sendable {
 
     private func answer(_ topic: WeatherTopic, _ c: DayContext) -> [String] {
         switch topic {
-        case .overview: return overview(c)
+        case .overview, .travel: return overview(c)
         case .temperature: return [temperature(c) ?? noData(c)]
         case .rain, .rainTiming: return rain(c, timing: topic == .rainTiming)
         case .umbrella: return umbrella(c)

@@ -41,6 +41,8 @@ final class HomeViewModel {
     var showLocationPicker = false
     var showClothing = false
     var showNotificationSettings = false
+    var showTravel = false
+    let travel: TravelWeatherViewModel
     private(set) var isMorningBriefing = false
     var notifications: NotificationCoordinator { container.notifications }
     private(set) var clothingToday: ClothingRecommendation?
@@ -60,7 +62,11 @@ final class HomeViewModel {
         self.demoScenario = container.initialDemoScenario
         self.conversation = ConversationViewModel(service: WeatherQueryService(container: container),
                                                   recognizer: container.speechRecognizer, now: container.now)
+        self.travel = TravelWeatherViewModel(service: TravelWeatherService(container: container), now: container.now)
         container.speech.onEvent = { [weak self] event in self?.handle(event) }
+        travel.origin = { [weak self] in self?.snapshot?.place }
+        travel.demoScenario = { [weak self] in self?.demoScenario }
+        travel.onSpeak = { [weak self] briefing in self?.present(briefing) }
         conversation.currentPlace = { [weak self] in self?.snapshot?.place }
         conversation.demoScenario = { [weak self] in self?.demoScenario }
         conversation.onAnswer = { [weak self] answer in self?.present(answer) }

@@ -26,7 +26,7 @@ public enum DayPart: Equatable, Sendable {
 }
 
 public enum WeatherTopic: String, Equatable, Sendable {
-    case overview, rain, rainTiming, umbrella, temperature, wind, uv, clothing, goingOut
+    case overview, rain, rainTiming, umbrella, temperature, wind, uv, clothing, goingOut, travel
 }
 
 /// Parsed from one utterance. `nil` fields mean "not mentioned" (may be inherited from context).

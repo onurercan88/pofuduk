@@ -60,10 +60,21 @@ public enum TurkishGrammar {
 
     /// "İstanbul" → "İstanbul'da", "İzmir" → "İzmir'de", "Kars" → "Kars'ta", "Rize" → "Rize'de".
     public static func locative(_ word: String) -> String {
+        "\(word)'\(consonant(word))\(vowel(word))"
+    }
+
+    /// "İstanbul" → "İstanbul'dan", "İzmir" → "İzmir'den", "Kars" → "Kars'tan".
+    public static func ablative(_ word: String) -> String {
+        "\(word)'\(consonant(word))\(vowel(word))n"
+    }
+
+    private static func vowel(_ word: String) -> String {
         let lower = word.lowercased(with: Locale(identifier: "tr_TR"))
         let lastVowel = lower.last { backVowels.contains($0) || frontVowels.contains($0) }
-        let vowel = (lastVowel.map { backVowels.contains($0) } ?? true) ? "a" : "e"
-        let consonant = lower.last.map { hardConsonants.contains($0) } == true ? "t" : "d"
-        return "\(word)'\(consonant)\(vowel)"
+        return (lastVowel.map { backVowels.contains($0) } ?? true) ? "a" : "e"
+    }
+
+    private static func consonant(_ word: String) -> String {
+        word.lowercased(with: Locale(identifier: "tr_TR")).last.map { hardConsonants.contains($0) } == true ? "t" : "d"
     }
 }

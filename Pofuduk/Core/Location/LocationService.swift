@@ -73,19 +73,24 @@ final class LocationService: LocationServicing {
 
 /// District/city search via Apple's geocoding (no API key), limited to Turkey.
 enum PlaceSearch {
-    static func search(_ text: String) async -> [Place] {
+    /// `turkeyOnly: false` is used for travel destinations abroad.
+    static func search(_ text: String, turkeyOnly: Bool = true) async -> [Place] {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = text
         request.resultTypes = .address
-        request.region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 39.0, longitude: 35.2),
-                                            span: MKCoordinateSpan(latitudeDelta: 8, longitudeDelta: 20))
+        if turkeyOnly {
+            request.region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 39.0, longitude: 35.2),
+                                                span: MKCoordinateSpan(latitudeDelta: 8, longitudeDelta: 20))
+        }
         guard let response = try? await MKLocalSearch(request: request).start() else { return [] }
         return response.mapItems.compactMap { item in
             let pm = item.placemark
-            guard pm.isoCountryCode == "TR" else { return nil }
+            guard !turkeyOnly || pm.isoCountryCode == "TR" else { return nil }
             let province = pm.administrativeArea
             let district = pm.subAdministrativeArea ?? pm.locality ?? item.name
-            return Place(name: province ?? district ?? "Seçilen konum", district: district, province: province,
+            // Abroad, the city (locality) is the natural name; in Turkey the province.
+            let name = pm.isoCountryCode == "TR" ? (province ?? district) : (pm.locality ?? province)
+            return Place(name: name ?? "Seçilen konum", district: district, province: province,
                          coordinate: Coordinate(latitude: pm.coordinate.latitude, longitude: pm.coordinate.longitude),
                          timeZoneIdentifier: item.timeZone?.identifier ?? "Europe/Istanbul", source: .manual)
         }

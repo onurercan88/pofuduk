@@ -214,6 +214,38 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(scheduler.scheduled.isEmpty)
     }
 
+    // MARK: - Travel
+
+    func testTravelQuestionAnswersForDestination() async {
+        let vm = makeDemoViewModel(speech: PreviewSpeechService())
+        await vm.onAppear()
+        await vm.conversation.ask("Yarın Bursa'ya gideceğim. Hava nasıl?")
+        XCTAssertTrue(vm.spoken?.fullText.hasPrefix("Yarın Bursa'da hava") == true, vm.spoken?.fullText ?? "")
+    }
+
+    func testTravelQuestionWithUnknownDestination() async {
+        let vm = makeDemoViewModel(speech: PreviewSpeechService())
+        await vm.onAppear()
+        await vm.conversation.ask("Yarın Atlantis'e gideceğim")
+        XCTAssertEqual(vm.spoken?.sentences.first, "Nereye gideceğini anlayamadım.")
+    }
+
+    func testTravelScreenMultiDayTripAndSpeak() async throws {
+        let speech = PreviewSpeechService()
+        let vm = makeDemoViewModel(speech: speech)
+        await vm.onAppear()
+        let travel = vm.travel
+        travel.select(TurkishProvinces.search("Antalya")[0].place)
+        travel.hasReturn = true
+        travel.returnDate = Calendar.current.date(byAdding: .day, value: 1, to: travel.departure)!
+        await travel.show()
+        let summary = try XCTUnwrap(travel.summary)
+        XCTAssertEqual(summary.destination.name, "Antalya")
+        XCTAssertEqual(summary.days.count, 2)
+        travel.speak()
+        XCTAssertEqual(speech.spokenSentences, summary.briefing.sentences)
+    }
+
     func testMicrophoneDeniedExplainsAndDoesNotListen() async {
         let recognizer = StubRecognizer()
         recognizer.authorized = false
