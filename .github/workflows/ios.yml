@@ -39,13 +39,13 @@ jobs:
             xcrun simctl ui "$SIM_ID" appearance "$2"
             xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
             xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario "$1"
-            sleep 8
+            sleep "${3:-8}"
             xcrun simctl io "$SIM_ID" screenshot "screenshots/$1-$2.png"
           }
           for s in sunny rainyAfternoon stormy snowy cloudy windy; do shoot "$s" light; done
           for s in sunny rainyAfternoon stormy; do shoot "$s" dark; done
           # "live" is not a demo scenario → real Open-Meteo data (no key in CI)
-          shoot live light
+          shoot live light 25
           ls -la screenshots
       - uses: actions/upload-artifact@v4
         if: always()

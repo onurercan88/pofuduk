@@ -1,21 +1,27 @@
 # Pofuduk — API Integrations
 
-> Terms below are **unverified** until Phase 3/10 validation. Everything marked ⚠ must be checked against the provider's current official terms before release.
+Terms were checked on 2026-11-14 against the official pages. Check them again before release.
 
-## WeatherAPI.com
-- Use: primary candidate (current, hourly, daily, astro, alerts; IP lookup only on explicit user choice).
-- ⚠ Verify: free-plan call limits, forecast-day limit on free tier, commercial/App Store use, attribution requirement.
-- Key handling: requires API key → must not ship in the binary. Options: backend proxy (preferred for release) or user-supplied key in Keychain for development.
+## WeatherAPI.com — primary (when a key is configured)
+- Free plan: 100,000 calls/month, **3-day forecast**, hourly data included, alerts "Limited". **Commercial use is allowed** on Free ("free for commercial use").
+- Attribution: Free users must credit WeatherAPI.com by name or logo. The app shows a "Powered by WeatherAPI.com" link in the footer.
+- ⚠ Terms require showing end users a specific weather disclaimer. The app shows a generic Turkish disclaimer. **The exact required wording must be checked before release.**
+- Adapter: `PofudukCore/Providers/WeatherAPIProvider.swift`. Uses `forecast.json?q=lat,lon&days=3&aqi=no&alerts=no`, maps condition codes to `WeatherCondition`, and uses max(chance_of_rain, chance_of_snow) as the precipitation probability.
+- Key handling: never in source or binary. Read from the Keychain (`KeychainSecretStore`). In DEBUG builds the scheme environment variable `WEATHERAPI_KEY` is copied into the Keychain once. Production should route through the backend proxy (Phase "Further releases"), because a key inside a shipped app can be extracted.
 
-## Open-Meteo
-- Use: development provider and alternative (no key).
-- ⚠ Free API is documented for **non-commercial** use; commercial App Store distribution likely requires a paid plan or self-hosting. Attribution (CC BY 4.0) required.
+## Open-Meteo — fallback / development
+- The free API is **non-commercial only**. Apps "that have subscriptions or display advertisements" count as commercial. Limits: 600/min, 5,000/hour, 10,000/day, 300,000/month. Attribution: CC BY 4.0. The footer links to open-meteo.com.
+- ⚠ Before any monetized release: buy the "API Standard" plan, self-host, or remove this provider.
+- `current=` has no `uv_index` → the current UV is taken from the current hour's hourly value.
+- Times are local ISO strings in the requested `timezone`. They are parsed with `LocalTimeParser` in the place's time zone, which handles DST correctly.
+
+## Fallback & cache
+- `WeatherProviderFallbackEngine`: providers are tried in order (WeatherAPI → Open-Meteo). If all fail it reports the most informative error (rate limit or bad response before a network or missing-key error).
+- `CachedWeatherRepository`: a cache entry younger than 30 minutes is returned without a network call. When every provider fails, a cached forecast up to 6 hours old is returned, still marked stale (the UI badge and the briefing say "güncel olmayabilir"). Older than that, the error is shown.
+- Storage: JSON files in Caches/Weather (forecast + selected place only). SwiftData is reserved for user preferences and saved places, because a cache this simple doesn't need it.
 
 ## MGM (mgm.gov.tr)
-- Need: official warnings (level, area, description, validity, source link).
-- Status: no documented, authorized machine-readable API verified yet. Undocumented internal endpoints and scraping are **not** used.
-- Fallback: `MGMWarningProvider` returns `.unavailable`; the UI shows the official MGM warning page link (exact URL to be verified in Phase 10).
-- Path forward: request authorized access from MGM, or use a licensed redistributor.
+- Status: no documented, authorized machine-readable API has been verified. The app shows "unavailable" plus the official site link (`UnavailableMGMAlertRepository`). Phase 10 will investigate authorized access.
 
 ## Geocoding
-- Apple `CLGeocoder` / MapKit search (no key) for destinations and manual city selection.
+- Apple `CLGeocoder` / MapKit search (no key) for manual city and destination selection (Phase 4/9).
