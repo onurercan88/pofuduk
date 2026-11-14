@@ -16,10 +16,13 @@ struct CharacterView: View {
                 WeatherEffectsView(theme: appearance.theme, time: t)
                     .frame(width: size * 1.7, height: size * 1.35)
                     .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                // Drawn parts (incl. decorative "z" letters) are hidden; the container carries the description.
                 CharacterFigure(appearance: appearance, time: reduceMotion ? 0 : t)
                     .frame(width: 200, height: 200)
                     .scaleEffect(size / 200)
                     .frame(width: size, height: size)
+                    .accessibilityHidden(true)
             }
         }
         .accessibilityElement(children: .ignore)
