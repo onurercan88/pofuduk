@@ -36,7 +36,9 @@ struct HomeView: View {
                     if let advice = viewModel.briefing?.advice, !advice.isEmpty {
                         AdviceSection(items: advice)
                     }
-                    MGMStatusCard(availability: viewModel.warningAvailability)
+                    if viewModel.snapshot != nil {
+                        MGMStatusCard(availability: viewModel.warningAvailability)
+                    }
 
                     if viewModel.needsLocation {
                         SoftCard {
@@ -49,8 +51,8 @@ struct HomeView: View {
                         }
                     }
 
-                    if viewModel.isFailed {
-                        RetryCard { Task { await viewModel.retry() } }
+                    if let reason = viewModel.failureReason {
+                        RetryCard(reason: reason) { Task { await viewModel.retry() } }
                     }
 
                     if let scenario = viewModel.demoScenario {

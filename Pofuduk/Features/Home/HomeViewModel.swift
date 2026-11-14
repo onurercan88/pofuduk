@@ -70,7 +70,8 @@ final class HomeViewModel {
 
     var isDemo: Bool { snapshot?.source == .demo }
     var isDemoMode: Bool { demoScenario != nil }
-    var isFailed: Bool { if case .failed = loadState { return true } else { return false } }
+    var isFailed: Bool { failureReason != nil }
+    var failureReason: String? { if case .failed(let reason) = loadState { return reason } else { return nil } }
     var isStale: Bool { analysis?.isStale ?? false }
     var needsLocation: Bool { loadState == .needsLocation }
     var isApproximateLocation: Bool { snapshot?.place.source == .ipApproximate }
@@ -225,7 +226,7 @@ final class HomeViewModel {
             analysis = nil
             let reason = (error as? WeatherError)?.turkishExplanation ?? WeatherError.network.turkishExplanation
             briefing = container.personality.unavailableBriefing(reason: reason)
-            loadState = .failed("Hava durumu alınamadı.")
+            loadState = .failed(reason)
         }
         track.load(briefing?.sentences ?? [])
 

@@ -256,13 +256,17 @@ struct DemoScenarioPicker: View {
 }
 
 struct RetryCard: View {
+    let reason: String
     let action: () -> Void
 
     var body: some View {
         SoftCard {
             HStack {
-                Label("Hava durumu alınamadı", systemImage: "wifi.exclamationmark")
-                    .font(PofudukFont.headline).foregroundStyle(PofudukColor.ink)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Hava durumu alınamadı", systemImage: "wifi.exclamationmark")
+                        .font(PofudukFont.headline).foregroundStyle(PofudukColor.ink)
+                    Text(reason).font(PofudukFont.caption).foregroundStyle(PofudukColor.inkSecondary)
+                }
                 Spacer()
                 Button("Tekrar dene", action: action)
                     .font(PofudukFont.caption.weight(.semibold))

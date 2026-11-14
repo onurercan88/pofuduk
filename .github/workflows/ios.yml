@@ -49,7 +49,7 @@ jobs:
           # Manual province (Ankara, plate 6) → real Open-Meteo data (no key in CI)
           xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
           xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.manualPlate 6
-          sleep 25
+          sleep 40
           xcrun simctl io "$SIM_ID" screenshot "screenshots/live-ankara-light.png"
           ls -la screenshots
       - uses: actions/upload-artifact@v4

@@ -27,7 +27,17 @@ public final class URLSessionHTTPClient: HTTPClient, @unchecked Sendable {
         session = URLSession(configuration: config)
     }
 
+    /// One retry after a short pause on transport failures (flaky mobile networks, cold DNS).
     public func get(_ url: URL) async throws -> HTTPResponse {
+        do {
+            return try await attempt(url)
+        } catch {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            return try await attempt(url)
+        }
+    }
+
+    private func attempt(_ url: URL) async throws -> HTTPResponse {
         try await withCheckedThrowingContinuation { continuation in
             session.dataTask(with: url) { data, response, error in
                 if error != nil {
