@@ -93,7 +93,15 @@ _Last updated: 2026-11-14_
 - [x] Optional morning notification at the chosen time from the latest daily forecast (not sent if the forecast would be >18 h old at delivery; source + time stated; deduplicated; quiet hours don't apply because the user chose the time)
 - [x] Demo data follows the container clock (deterministic tests)
 
-### Phase 9+ — not started
+### Phase 9 — Travel weather "Seyahat Hava Durumu" ✅ (CI: 113 core, 27 VM, 1 UI tests pass; travel screen not yet screenshotted)
+- [x] `TravelWeatherSummaryEngine`: departure → return days (max 7) in the destination's time zone; comparison with origin ("İstanbul'dan biraz daha serin"); rain by time of day; wind; later days in one line each; packing advice from the clothing engine; "less certain" note from day +3; missing days stated; time-zone difference stated
+- [x] `DestinationResolver`: offline province match + Apple geocoding (districts, cities abroad)
+- [x] `TravelWeatherService` (origin failure doesn't block the destination), `TravelWeatherViewModel`, travel screen (search, dates, summary, daily rows, packing, "Pofuduk anlatsın"), home card
+- [x] Conversation: "Yarın Bursa'ya gideceğim", "Hafta sonu Antalya'ya gitmek istiyorum", "İstanbul'dan Ankara'ya yolculuk" → travel answer; unknown destination → honest prompt
+- [x] No route or road information is ever claimed (footnote on the screen)
+- [ ] Saved trips (future feature per spec)
+
+### Phase 10+ — not started
 See ROADMAP.md.
 
 ## Known limitations
