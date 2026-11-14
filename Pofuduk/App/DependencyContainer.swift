@@ -11,6 +11,7 @@ final class DependencyContainer {
     let summaryEngine: WeatherSummaryEngine
     let personality: CharacterPersonalityEngine
     let now: () -> Date
+    let notifications: NotificationCoordinator
     /// Non-nil = start in clearly labelled demo mode (previews, tests, CI screenshots).
     let initialDemoScenario: MockWeatherData.Scenario?
     private let liveRepository: WeatherRepository
@@ -18,6 +19,7 @@ final class DependencyContainer {
     init(speech: SpeechServicing? = nil,
          speechRecognizer: SpeechRecognizing? = nil,
          location: LocationServicing? = nil,
+         notifications: NotificationCoordinator? = nil,
          alertRepository: WeatherAlertRepository = UnavailableMGMAlertRepository(),
          summaryEngine: WeatherSummaryEngine = WeatherSummaryEngine(),
          personality: CharacterPersonalityEngine = CharacterPersonalityEngine(),
@@ -37,6 +39,20 @@ final class DependencyContainer {
         self.initialDemoScenario = initialDemoScenario
         self.now = now
         self.liveRepository = liveRepository ?? Self.makeLiveRepository(keychain: keychain, http: http)
+        self.notifications = notifications ?? NotificationCoordinator(
+            scheduler: UserNotificationService(), store: NotificationPreferenceStore(),
+            log: UserDefaultsNotificationLog(), now: now)
+    }
+
+    /// Background refresh (best effort): fresh forecast for the last known place → replan notifications.
+    /// Never asks for location in the background and never runs in demo mode.
+    func backgroundRefresh() async {
+        guard initialDemoScenario == nil, notifications.preferences.isEnabled,
+              let place = location.backgroundPlace,
+              let snapshot = try? await liveRepository.snapshot(for: place, forceRefresh: true) else { return }
+        let warnings: [OfficialWarning]
+        if case .available(let list) = await alertRepository.warnings(for: place, at: now()) { warnings = list } else { warnings = [] }
+        await notifications.refresh(snapshot: snapshot, warnings: warnings)
     }
 
     /// Production container: live data unless the launch argument `-pofuduk.demoScenario <name>` is given.

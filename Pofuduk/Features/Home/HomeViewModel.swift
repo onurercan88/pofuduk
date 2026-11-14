@@ -40,6 +40,8 @@ final class HomeViewModel {
     var locationPrompt: LocationPrompt?
     var showLocationPicker = false
     var showClothing = false
+    var showNotificationSettings = false
+    var notifications: NotificationCoordinator { container.notifications }
     private(set) var clothingToday: ClothingRecommendation?
     /// What the bubble currently speaks/shows: the main briefing or the latest answer.
     private(set) var spoken: Briefing?
@@ -263,6 +265,10 @@ final class HomeViewModel {
             self.snapshot = snapshot
             self.analysis = analysis
             self.warningAvailability = warnings
+            if demoScenario == nil {
+                // Notifications are planned only from real forecasts, never demo data.
+                await container.notifications.refresh(snapshot: snapshot, warnings: activeWarnings)
+            }
             self.clothingToday = ClothingRecommendationEngine().recommend(for: snapshot, now: now)
             self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
             loadState = .loaded

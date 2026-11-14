@@ -53,9 +53,23 @@ public enum LocationError: Error, Equatable, Sendable {
 public struct LocationPreference: Codable, Equatable, Sendable {
     public var mode: LocationMode
     public var manualPlace: Place?
+    /// Last place used for a forecast, coarsened to ~1 km (2 decimals). Used only for background
+    /// notification refresh, which cannot ask for location.
+    public var lastPlace: Place?
 
-    public init(mode: LocationMode = .automatic, manualPlace: Place? = nil) {
+    public init(mode: LocationMode = .automatic, manualPlace: Place? = nil, lastPlace: Place? = nil) {
         self.mode = mode
         self.manualPlace = manualPlace
+        self.lastPlace = lastPlace
+    }
+
+    /// Place for background work: the user's manual choice, else the last (coarsened) place.
+    public var backgroundPlace: Place? { mode == .manual ? manualPlace : lastPlace }
+
+    public static func coarsened(_ place: Place) -> Place {
+        var p = place
+        p.coordinate = Coordinate(latitude: (place.coordinate.latitude * 100).rounded() / 100,
+                                  longitude: (place.coordinate.longitude * 100).rounded() / 100)
+        return p
     }
 }

@@ -92,6 +92,10 @@ struct HomeView: View {
                         onApproximate: { Task { await viewModel.useApproximateLocation() } })
                 }
             Color.clear
+                .sheet(isPresented: $viewModel.showNotificationSettings) {
+                    NotificationSettingsView(coordinator: viewModel.notifications)
+                }
+            Color.clear
                 .sheet(isPresented: $viewModel.showClothing) {
                     ClothingDetailView(theme: viewModel.appearance.theme,
                                        recommendationFor: { viewModel.clothing(dayOffset: $0) },

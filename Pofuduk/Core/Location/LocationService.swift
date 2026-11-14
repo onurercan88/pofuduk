@@ -7,6 +7,8 @@ import PofudukCore
 protocol LocationServicing: AnyObject {
     var preference: LocationPreference { get }
     var isIPAvailable: Bool { get }
+    /// Place usable without asking for location (background refresh).
+    var backgroundPlace: Place? { get }
     func resolve() async -> LocationResolution
     func requestPermission() async
     func setMode(_ mode: LocationMode)
@@ -37,12 +39,19 @@ final class LocationService: LocationServicing {
         if let provider = ipProvider {
             ip = { try await provider.currentPlace() }
         }
-        return await resolver.resolve(
+        let result = await resolver.resolve(
             preference: preference,
             permission: device.permission,
             gps: { try await device.currentPlace() },
             ip: ip)
+        if case .resolved(let place) = result {
+            preference.lastPlace = LocationPreference.coarsened(place)
+            store.save(preference)
+        }
+        return result
     }
+
+    var backgroundPlace: Place? { preference.backgroundPlace }
 
     func requestPermission() async {
         setMode(.automatic)

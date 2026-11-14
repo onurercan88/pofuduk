@@ -20,6 +20,7 @@ final class HomeViewModelTests: XCTestCase {
     final class StubLocationService: LocationServicing {
         var preference = LocationPreference()
         var isIPAvailable = false
+        var backgroundPlace: Place? { preference.backgroundPlace }
         var resolution: LocationResolution
         private(set) var permissionRequests = 0
         init(_ resolution: LocationResolution) { self.resolution = resolution }
@@ -81,6 +82,86 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.clothing(dayOffset: 1), "Demo data covers tomorrow")
         vm.speakClothing(today)
         XCTAssertEqual(speech.spokenSentences, today.sentences)
+    }
+
+    // MARK: - Notifications
+
+    @MainActor
+    final class StubScheduler: NotificationScheduling {
+        var status: NotificationPermission
+        var grantOnRequest: Bool
+        private(set) var requests = 0
+        private(set) var scheduled: [PlannedNotification] = []
+        init(status: NotificationPermission, grantOnRequest: Bool = true) {
+            self.status = status
+            self.grantOnRequest = grantOnRequest
+        }
+        func permission() async -> NotificationPermission { status }
+        func requestAuthorization() async -> Bool {
+            requests += 1
+            status = grantOnRequest ? .authorized : .denied
+            return grantOnRequest
+        }
+        func replacePending(with planned: [PlannedNotification], now: Date) async { scheduled = planned }
+    }
+
+    struct FixedScenarioRepository: WeatherRepository {
+        let scenario: MockWeatherData.Scenario
+        let now: Date
+        func snapshot(for place: Place, forceRefresh: Bool) async throws -> WeatherSnapshot {
+            var s = MockWeatherData.snapshot(scenario, now: now, place: place)
+            s.source = .openMeteo
+            return s
+        }
+    }
+
+    private func makeNotificationViewModel(scheduler: StubScheduler, demo: MockWeatherData.Scenario? = nil,
+                                           enabled: Bool) -> HomeViewModel {
+        let suite = "HomeViewModelTests.notifications"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let store = NotificationPreferenceStore(defaults: defaults)
+        var prefs = NotificationPreferences()
+        prefs.isEnabled = enabled
+        prefs.quietHours.enabled = false
+        store.save(prefs)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: 13))!
+        let coordinator = NotificationCoordinator(scheduler: scheduler, store: store, log: InMemoryNotificationLog(), now: { now })
+        let container = DependencyContainer(speech: PreviewSpeechService(), speechRecognizer: StubRecognizer(),
+                                            location: StubLocationService(.resolved(MockWeatherData.istanbul)),
+                                            notifications: coordinator,
+                                            liveRepository: FixedScenarioRepository(scenario: .rainyAfternoon, now: now),
+                                            initialDemoScenario: demo, now: { now })
+        return HomeViewModel(container: container, defaults: defaults)
+    }
+
+    func testLiveForecastSchedulesRainNotification() async throws {
+        let scheduler = StubScheduler(status: .authorized)
+        let vm = makeNotificationViewModel(scheduler: scheduler, enabled: true)
+        await vm.onAppear()
+        let rain = try XCTUnwrap(scheduler.scheduled.first { $0.category == .rainSoon })
+        XCTAssertTrue(rain.body.contains("yağmur bekleniyor"), rain.body)
+        XCTAssertTrue(rain.body.contains("Kaynak:"), "Source is always stated")
+    }
+
+    func testDemoDataNeverSchedulesNotifications() async {
+        let scheduler = StubScheduler(status: .authorized)
+        let vm = makeNotificationViewModel(scheduler: scheduler, demo: .rainyAfternoon, enabled: true)
+        await vm.onAppear()
+        XCTAssertTrue(scheduler.scheduled.isEmpty)
+    }
+
+    func testNotificationPermissionDeniedKeepsFeatureOff() async {
+        let scheduler = StubScheduler(status: .notDetermined, grantOnRequest: false)
+        let vm = makeNotificationViewModel(scheduler: scheduler, enabled: false)
+        await vm.onAppear()
+        await vm.notifications.setEnabled(true)
+        XCTAssertEqual(scheduler.requests, 1, "Permission asked only when the user turns it on")
+        XCTAssertFalse(vm.notifications.preferences.isEnabled)
+        XCTAssertEqual(vm.notifications.permission, .denied)
+        XCTAssertTrue(scheduler.scheduled.isEmpty)
     }
 
     func testMicrophoneDeniedExplainsAndDoesNotListen() async {
