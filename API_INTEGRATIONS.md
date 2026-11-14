@@ -11,7 +11,7 @@ Terms were checked on 2026-11-14 against the official pages. Check them again be
 
 ## Open-Meteo — fallback / development
 - The free API is **non-commercial only**. Apps "that have subscriptions or display advertisements" count as commercial. Limits: 600/min, 5,000/hour, 10,000/day, 300,000/month. Attribution: CC BY 4.0. The footer links to open-meteo.com.
-- ⚠ Before any monetized release: buy the "API Standard" plan, self-host, or remove this provider.
+- A free, ad-free release without in-app purchases very likely counts as non-commercial; confirm with info@open-meteo.com before submission. Once ads, subscriptions or a paid version are added: buy the "API Standard" plan (separate endpoint plus key) or self-host.
 - Observed 2026-11-14: requests from GitHub's shared macOS runners timed out (−1001), while the same request from a home connection worked. Don't depend on Open-Meteo from shared or cloud IPs.
 - `current=` has no `uv_index` → the current UV is taken from the current hour's hourly value.
 - Times are local ISO strings in the requested `timezone`. They are parsed with `LocalTimeParser` in the place's time zone, which handles DST correctly.

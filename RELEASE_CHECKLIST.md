@@ -3,9 +3,12 @@
 Status as of 2026-11-14. ✅ done · ⛔ blocker · ☐ to do.
 
 ## Blockers (must be resolved before App Store submission)
-- ⛔ **Weather data licence:** the Open-Meteo free API is non-commercial only. Before a monetized release, do one of: buy Open-Meteo "API Standard", self-host, or use WeatherAPI only.
-- ⛔ **WeatherAPI key:** must not ship in the binary. Build the backend proxy (ASP.NET Core, NOTIFICATIONS.md / spec §22), or ship Open-Meteo-only under a commercial plan.
-- ⛔ **WeatherAPI disclaimer:** check the exact end-user disclaimer wording WeatherAPI's terms require, and replace the generic footer text with it.
+- ☐ **Weather data licence (Open-Meteo):**
+  - **Free, ad-free release without in-app purchases:** the free API (`api.open-meteo.com/v1/forecast`, already used) very likely qualifies as non-commercial use. Open-Meteo's terms name apps with subscriptions or ads as commercial. Confirm by email to info@open-meteo.com with a short description of the app before submission. CC BY 4.0 attribution is already shown in the app.
+  - **If ads, subscriptions or a paid version are added:** switch to the paid "API Standard" plan (a separate endpoint plus an API key). The provider is its own layer in the code, so the change is small.
+  - **Rate limits:** apply per IP. Each user's phone uses its own IP, and forecasts are cached for 30 minutes, so normal use is fine.
+- ☐ **WeatherAPI (optional):** not needed for an Open-Meteo-only release. If used, its key must not ship in the binary: use the backend proxy (ASP.NET Core, NOTIFICATIONS.md / spec §22).
+- ☐ **WeatherAPI disclaimer (only if WeatherAPI is used):** check the exact end-user disclaimer wording WeatherAPI's terms require, and replace the generic footer text with it.
 - ⛔ **MGM warnings:** live data needs written permission and a feed. Until then the app shows "unavailable" plus the official link, which is acceptable to ship.
 - ☐ Apple Developer account, bundle ID `com.pofuduk.app`, signing.
 

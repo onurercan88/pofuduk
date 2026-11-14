@@ -125,7 +125,7 @@ _Last updated: 2026-11-14_
 - [x] Security, performance, error-handling and privacy reviews (RELEASE_CHECKLIST.md); `PrivacyInfo.xcprivacy`
 - [x] App icon rendered from the character in CI (opaque 1024 px) and added to the asset catalog
 - [x] README.md, RELEASE_CHECKLIST.md, APP_STORE_METADATA.md (Turkish metadata, keywords, privacy label, screenshot plan)
-- [ ] Release blockers (see RELEASE_CHECKLIST.md): Open-Meteo commercial licence, WeatherAPI key via backend, WeatherAPI disclaimer wording, MGM permission, Apple developer account/signing, real-device checks
+- [ ] Before release (see RELEASE_CHECKLIST.md): confirm with Open-Meteo that a free, ad-free release counts as non-commercial; Apple developer account/signing; real-device checks; MGM permission (optional; the app works with the official link meanwhile); WeatherAPI only with the backend proxy
 See ROADMAP.md.
 
 ## Known limitations
