@@ -10,12 +10,13 @@ final class DependencyContainer {
     let personality: CharacterPersonalityEngine
     let now: () -> Date
 
-    init(speech: SpeechServicing = SpeechService(),
+    init(speech: SpeechServicing? = nil,
          alertRepository: WeatherAlertRepository = UnavailableMGMAlertRepository(),
          summaryEngine: WeatherSummaryEngine = WeatherSummaryEngine(),
          personality: CharacterPersonalityEngine = CharacterPersonalityEngine(),
          now: @escaping () -> Date = { Date() }) {
-        self.speech = speech
+        // Created here (main actor) rather than as a default argument, which is evaluated nonisolated.
+        self.speech = speech ?? SpeechService()
         self.alertRepository = alertRepository
         self.summaryEngine = summaryEngine
         self.personality = personality
