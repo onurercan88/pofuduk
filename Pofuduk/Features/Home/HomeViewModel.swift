@@ -68,7 +68,8 @@ final class HomeViewModel {
     init(container: DependencyContainer, defaults: UserDefaults = .standard) {
         self.container = container
         self.defaults = defaults
-        self.isSoundOn = defaults.object(forKey: Self.soundKey) as? Bool ?? true
+        // bool(forKey:) also understands launch arguments like `-pofuduk.soundOn NO` (UI tests).
+        self.isSoundOn = defaults.object(forKey: Self.soundKey) == nil ? true : defaults.bool(forKey: Self.soundKey)
         self.demoScenario = container.initialDemoScenario
         let prefs = container.preferencesStore.load()
         self.preferences = prefs
@@ -216,6 +217,7 @@ final class HomeViewModel {
         #if DEBUG
         // CI screenshots: `-pofuduk.openClothing YES`
         if defaults.bool(forKey: "pofuduk.openClothing"), clothingToday != nil { showClothing = true }
+        if defaults.bool(forKey: "pofuduk.openSettings") { showSettings = true }
         #endif
     }
 

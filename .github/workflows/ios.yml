@@ -24,7 +24,8 @@ jobs:
           SIM_ID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
           echo "Simulator: $SIM_ID"
           echo "SIM_ID=$SIM_ID" >> "$GITHUB_ENV"
-          xcodebuild test -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
+          mkdir -p screenshots
+          TEST_RUNNER_POFUDUK_ICON_OUTPUT="$PWD/screenshots/AppIcon-1024.png" xcodebuild test -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
             -destination "id=$SIM_ID" CODE_SIGNING_ALLOWED=NO 2>&1 \
             | grep -E "error:|warning: .*Pofuduk|Test Case .*(passed|failed)|\*\* (BUILD|TEST)" | head -n 200
       - name: Screenshots (every demo scenario, light + dark)
@@ -50,6 +51,10 @@ jobs:
           xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario windy -pofuduk.openClothing YES
           sleep 8
           xcrun simctl io "$SIM_ID" screenshot "screenshots/clothing-windy-light.png"
+          xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
+          xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario sunny -pofuduk.openSettings YES
+          sleep 8
+          xcrun simctl io "$SIM_ID" screenshot "screenshots/settings-light.png"
           # "live" is not a demo scenario → first-launch location explanation sheet
           shoot live light 10
           # Manual province (Ankara, plate 6) → real Open-Meteo data (no key in CI)

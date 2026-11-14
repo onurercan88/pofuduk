@@ -9,7 +9,8 @@ struct CharacterView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { context in
+        // 30 fps is visually smooth for this soft character and halves CPU/battery cost vs 60 fps.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             ZStack {
                 WeatherEffectsView(theme: appearance.theme, time: t)

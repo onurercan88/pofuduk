@@ -6,6 +6,8 @@ struct HomeView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// Hero temperature scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 72
 
     var body: some View {
         ZStack {
@@ -137,7 +139,7 @@ struct HomeView: View {
             if let current = viewModel.snapshot?.current {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(TurkishFormatting.shortTemperature(current.temperature))
-                        .font(PofudukFont.heroTemperature)
+                        .font(.system(size: heroSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(PofudukColor.ink)
                         .contentTransition(.numericText())
                     VStack(alignment: .leading, spacing: 2) {
