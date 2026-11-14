@@ -2,6 +2,10 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(os)
+import os
+private let networkLog = Logger(subsystem: "com.pofuduk.app", category: "network")
+#endif
 
 public struct HTTPResponse: Sendable {
     public var data: Data
@@ -40,8 +44,12 @@ public final class URLSessionHTTPClient: HTTPClient, @unchecked Sendable {
     private func attempt(_ url: URL) async throws -> HTTPResponse {
         try await withCheckedThrowingContinuation { continuation in
             session.dataTask(with: url) { data, response, error in
-                if error != nil {
-                    // Never include the URL in errors: it may carry an API key.
+                if let error {
+                    // Never include the URL in errors or logs: it may carry an API key.
+                    #if canImport(os)
+                    let ns = error as NSError
+                    networkLog.error("transport error \(ns.domain, privacy: .public) \(ns.code, privacy: .public) host=\(url.host ?? "-", privacy: .public)")
+                    #endif
                     continuation.resume(throwing: WeatherError.network)
                     return
                 }
