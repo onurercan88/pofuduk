@@ -1,0 +1,59 @@
+name: Pofuduk
+options:
+  bundleIdPrefix: com.pofuduk
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: tr
+packages:
+  PofudukCore:
+    path: PofudukCore
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Pofuduk:
+    type: application
+    platform: iOS
+    sources: [Pofuduk]
+    dependencies:
+      - package: PofudukCore
+    info:
+      path: Pofuduk/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Pofuduk
+        CFBundleDevelopmentRegion: tr
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocationWhenInUseUsageDescription: "Pofuduk, bulunduğun yerin hava durumunu anlatabilmek için konumunu yalnızca uygulamayı kullanırken alır. Konumun takip edilmez ve paylaşılmaz."
+        NSMicrophoneUsageDescription: "Pofuduk'a sesli soru sorabilmen için mikrofon yalnızca sen mikrofon düğmesine bastığında kullanılır."
+        NSSpeechRecognitionUsageDescription: "Sesli sorularını anlayabilmek için konuşma tanıma kullanılır. Mümkün olduğunda cihaz üzerinde işlenir."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pofuduk.app
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+  PofudukTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/UnitTests]
+    dependencies:
+      - target: Pofuduk
+      - package: PofudukCore
+  PofudukUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/UIAutomationTests]
+    dependencies:
+      - target: Pofuduk
+schemes:
+  Pofuduk:
+    build:
+      targets:
+        Pofuduk: all
+    test:
+      targets: [PofudukTests, PofudukUITests]
