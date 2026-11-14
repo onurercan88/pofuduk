@@ -3,6 +3,7 @@ import XCTest
 final class HomeUITests: XCTestCase {
     func testHomeShowsDemoBadgeAndControls() {
         let app = XCUIApplication()
+        app.launchArguments = ["-pofuduk.demoScenario", "rainyAfternoon"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Örnek veri — gerçek tahmin değil"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Durdur"].exists)

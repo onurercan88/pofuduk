@@ -247,16 +247,54 @@ struct DemoScenarioPicker: View {
     }
 }
 
+struct RetryCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        SoftCard {
+            HStack {
+                Label("Hava durumu alınamadı", systemImage: "wifi.exclamationmark")
+                    .font(PofudukFont.headline).foregroundStyle(PofudukColor.ink)
+                Spacer()
+                Button("Tekrar dene", action: action)
+                    .font(PofudukFont.caption.weight(.semibold))
+                    .buttonStyle(.borderedProminent)
+                    .tint(PofudukColor.accent)
+            }
+        }
+    }
+}
+
+/// Provider attribution (required by WeatherAPI terms and Open-Meteo's CC BY 4.0) + freshness.
 struct SourceFooter: View {
     let snapshot: WeatherSnapshot?
     let isStale: Bool
 
+    private func sourceLink(_ source: WeatherDataSource) -> URL? {
+        switch source {
+        case .weatherAPI: return URL(string: "https://www.weatherapi.com/")
+        case .openMeteo: return URL(string: "https://open-meteo.com/")
+        case .demo: return nil
+        }
+    }
+
     var body: some View {
         if let snapshot {
             VStack(spacing: 4) {
-                Text("Kaynak: \(snapshot.source.attribution) · Güncelleme \(TurkishFormatting.clockTime(snapshot.retrievedAt, timeZone: snapshot.place.timeZone))")
+                if let url = sourceLink(snapshot.source) {
+                    Link(destination: url) {
+                        Text(snapshot.source == .weatherAPI ? "Powered by WeatherAPI.com" : "Hava verisi: Open-Meteo.com (CC BY 4.0)")
+                            .underline()
+                    }
+                } else {
+                    Text("Kaynak: \(snapshot.source.attribution)")
+                }
+                Text("Güncelleme \(TurkishFormatting.clockTime(snapshot.retrievedAt, timeZone: snapshot.place.timeZone))")
                 if isStale {
                     Label("Veriler güncel olmayabilir", systemImage: "clock.badge.exclamationmark")
+                }
+                if snapshot.source != .demo {
+                    Text("Tahminler bilgilendirme amaçlıdır ve kesinlik garanti edilmez.")
                 }
             }
             .font(PofudukFont.caption)

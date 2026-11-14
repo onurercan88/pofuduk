@@ -44,6 +44,8 @@ jobs:
           }
           for s in sunny rainyAfternoon stormy snowy cloudy windy; do shoot "$s" light; done
           for s in sunny rainyAfternoon stormy; do shoot "$s" dark; done
+          # "live" is not a demo scenario → real Open-Meteo data (no key in CI)
+          shoot live light
           ls -la screenshots
       - uses: actions/upload-artifact@v4
         if: always()

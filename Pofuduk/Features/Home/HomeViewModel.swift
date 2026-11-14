@@ -18,7 +18,8 @@ final class HomeViewModel {
     private(set) var warningAvailability: WarningAvailability?
     private(set) var isWaking = false
     private(set) var voiceMissing = false
-    private(set) var demoScenario: MockWeatherData.Scenario = .rainyAfternoon
+    /// nil = live data. Non-nil only in labelled demo mode.
+    private(set) var demoScenario: MockWeatherData.Scenario?
     private(set) var isSoundOn: Bool {
         didSet { defaults.set(isSoundOn, forKey: Self.soundKey) }
     }
@@ -33,11 +34,7 @@ final class HomeViewModel {
         self.container = container
         self.defaults = defaults
         self.isSoundOn = defaults.object(forKey: Self.soundKey) as? Bool ?? true
-        // Launch argument `-pofuduk.demoScenario stormy` (used by CI screenshots) selects the demo scenario.
-        if let raw = defaults.string(forKey: "pofuduk.demoScenario"),
-           let scenario = MockWeatherData.Scenario(rawValue: raw) {
-            self.demoScenario = scenario
-        }
+        self.demoScenario = container.initialDemoScenario
         container.speech.onEvent = { [weak self] event in self?.handle(event) }
     }
 
@@ -56,6 +53,8 @@ final class HomeViewModel {
     }
 
     var isDemo: Bool { snapshot?.source == .demo }
+    var isDemoMode: Bool { demoScenario != nil }
+    var isFailed: Bool { if case .failed = loadState { return true } else { return false } }
     var isStale: Bool { analysis?.isStale ?? false }
 
     var upcomingHours: [HourlyForecast] {
@@ -87,11 +86,15 @@ final class HomeViewModel {
     }
 
     func refresh() async {
-        await load(autoSpeak: false, greetSleepily: false)
+        await load(autoSpeak: false, greetSleepily: false, forceRefresh: true)
+    }
+
+    func retry() async {
+        await load(autoSpeak: true, greetSleepily: false, forceRefresh: true)
     }
 
     func selectScenario(_ scenario: MockWeatherData.Scenario) async {
-        guard scenario != demoScenario || loadState != .loaded else { return }
+        guard isDemoMode, scenario != demoScenario || loadState != .loaded else { return }
         container.speech.stop()
         demoScenario = scenario
         await load(autoSpeak: true, greetSleepily: false)
@@ -130,12 +133,13 @@ final class HomeViewModel {
 
     // MARK: - Loading
 
-    private func load(autoSpeak: Bool, greetSleepily: Bool) async {
+    private func load(autoSpeak: Bool, greetSleepily: Bool, forceRefresh: Bool = false) async {
+        container.speech.stop()
         loadState = .loading
         let place = container.defaultPlace
         let repository = container.weatherRepository(demoScenario: demoScenario)
         do {
-            let snapshot = try await repository.snapshot(for: place, forceRefresh: false)
+            let snapshot = try await repository.snapshot(for: place, forceRefresh: forceRefresh)
             let now = container.now()
             let warnings = await container.alertRepository.warnings(for: place, at: now)
             let analysis = container.summaryEngine.analyze(snapshot, now: now)
@@ -147,7 +151,8 @@ final class HomeViewModel {
         } catch {
             snapshot = nil
             analysis = nil
-            briefing = container.personality.unavailableBriefing(reason: "İnternet bağlantını kontrol edebilirsin.")
+            let reason = (error as? WeatherError)?.turkishExplanation ?? WeatherError.network.turkishExplanation
+            briefing = container.personality.unavailableBriefing(reason: reason)
             loadState = .failed("Hava durumu alınamadı.")
         }
         track.load(briefing?.sentences ?? [])

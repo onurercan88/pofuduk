@@ -4,14 +4,31 @@ import PofudukCore
 
 @MainActor
 final class HomeViewModelTests: XCTestCase {
-    private func makeViewModel(speech: PreviewSpeechService, hour: Int = 15) -> HomeViewModel {
+    struct FailingRepository: WeatherRepository {
+        func snapshot(for place: Place, forceRefresh: Bool) async throws -> WeatherSnapshot { throw WeatherError.network }
+    }
+
+    private func makeViewModel(speech: PreviewSpeechService, hour: Int = 15,
+                               demo: MockWeatherData.Scenario? = .rainyAfternoon) -> HomeViewModel {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!
         let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: hour))!
         let defaults = UserDefaults(suiteName: "HomeViewModelTests")!
         defaults.removePersistentDomain(forName: "HomeViewModelTests")
-        let container = DependencyContainer(speech: speech, now: { now })
+        let container = DependencyContainer(speech: speech, liveRepository: FailingRepository(),
+                                            initialDemoScenario: demo, now: { now })
         return HomeViewModel(container: container, defaults: defaults)
+    }
+
+    func testLiveFailureShowsErrorWithoutInventingData() async {
+        let speech = PreviewSpeechService()
+        let vm = makeViewModel(speech: speech, demo: nil)
+        await vm.onAppear()
+        XCTAssertTrue(vm.isFailed)
+        XCTAssertNil(vm.snapshot)
+        XCTAssertEqual(vm.appearance.theme, .cloudy)
+        XCTAssertTrue(vm.briefing?.fullText.contains("ulaşamadım") == true)
+        XCTAssertFalse(vm.briefing?.fullText.contains("derece") == true, "No temperatures without data")
     }
 
     func testAppearLoadsDemoBriefingAndStartsSpeaking() async {

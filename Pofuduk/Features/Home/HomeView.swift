@@ -38,8 +38,12 @@ struct HomeView: View {
                     }
                     MGMStatusCard(availability: viewModel.warningAvailability)
 
-                    if viewModel.isDemo {
-                        DemoScenarioPicker(selected: viewModel.demoScenario) { scenario in
+                    if viewModel.isFailed {
+                        RetryCard { Task { await viewModel.retry() } }
+                    }
+
+                    if let scenario = viewModel.demoScenario {
+                        DemoScenarioPicker(selected: scenario) { scenario in
                             Task { await viewModel.selectScenario(scenario) }
                         }
                     }
@@ -87,10 +91,10 @@ struct HomeView: View {
 }
 
 #Preview("Demo") {
-    HomeView(viewModel: DependencyContainer(speech: PreviewSpeechService()).makeHomeViewModel())
+    HomeView(viewModel: DependencyContainer(speech: PreviewSpeechService(), initialDemoScenario: .rainyAfternoon).makeHomeViewModel())
 }
 
 #Preview("Dark") {
-    HomeView(viewModel: DependencyContainer(speech: PreviewSpeechService()).makeHomeViewModel())
+    HomeView(viewModel: DependencyContainer(speech: PreviewSpeechService(), initialDemoScenario: .sunny).makeHomeViewModel())
         .preferredColorScheme(.dark)
 }
