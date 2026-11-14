@@ -68,6 +68,17 @@ jobs:
           echo "--- app network log"
           xcrun simctl spawn "$SIM_ID" log show --last 5m --style compact --predicate 'subsystem == "com.pofuduk.app"' | tail -n 20 || true
           ls -la screenshots
+      - name: Screen recording (guided tour, no audio)
+        run: |
+          xcrun simctl ui "$SIM_ID" appearance light
+          xcrun simctl io "$SIM_ID" recordVideo --codec=h264 --force screenshots/pofuduk-tour.mp4 &
+          REC=$!
+          sleep 2
+          TEST_RUNNER_POFUDUK_TOUR=1 xcodebuild test-without-building -project Pofuduk.xcodeproj -scheme Pofuduk \
+            -derivedDataPath build -destination "id=$SIM_ID" \
+            -only-testing:PofudukUITests/DemoTourUITests 2>&1 | grep -E "Test Case|\*\* TEST" || true
+          kill -INT $REC; wait $REC || true
+          ls -la screenshots/pofuduk-tour.mp4
       - uses: actions/upload-artifact@v4
         if: always()
         with:
