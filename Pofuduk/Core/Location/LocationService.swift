@@ -21,9 +21,9 @@ final class LocationService: LocationServicing {
     private let resolver = LocationResolver()
     private(set) var preference: LocationPreference
 
-    init(device: CoreLocationProvider = CoreLocationProvider(), ipProvider: LocationProvider?,
+    init(device: CoreLocationProvider? = nil, ipProvider: LocationProvider?,
          store: LocationPreferenceStore = UserDefaultsLocationPreferenceStore()) {
-        self.device = device
+        self.device = device ?? CoreLocationProvider()
         self.ipProvider = ipProvider
         self.store = store
         self.preference = store.load()

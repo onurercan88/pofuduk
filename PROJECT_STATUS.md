@@ -41,7 +41,17 @@ _Last updated: 2026-11-14_
 - [x] Simulator screenshot showing live Open-Meteo data (CI `live-light.png`)
 - [ ] Polish: the subtitle sentence transition slides in from the bottom edge and briefly overlaps the progress dots; switch to a small offset + fade
 
-### Phase 4+ — not started
+### Phase 4 — Location 🟡 (pending CI verification)
+- [x] `LocationResolver` policy: explain first, When In Use only, IP only on explicit opt-in, never silent fallback — tested
+- [x] `LocationPreference` persisted (UserDefaults; only the user's choice, never GPS fixes)
+- [x] Offline list of 81 provinces with Turkish-aware search; district/city search via MapKit (TR only)
+- [x] `WeatherAPIIPLocationProvider` (approximate, offered only when a WeatherAPI key exists) — tested
+- [x] `CoreLocationProvider`: one-shot ~1 km fix, reverse geocoding in Turkish, place time zone
+- [x] Permission explanation sheet, denied/unavailable alternatives with a Settings link, picker, "Yaklaşık konum" badge
+- [x] No weather is shown or spoken until a location exists (no hard-coded Istanbul in live mode)
+- [x] Subtitle transition polish (small offset + fade)
+
+### Phase 5+ — not started
 See ROADMAP.md.
 
 ## Known limitations
