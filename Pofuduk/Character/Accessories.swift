@@ -98,7 +98,9 @@ struct MoodDecorations: View {
             case .sleeping:
                 ForEach(0..<3, id: \.self) { i in
                     let phase = (time * 0.6 + Double(i) / 3).truncatingRemainder(dividingBy: 1)
-                    Text("z").font(.system(size: 14 + CGFloat(i) * 4, weight: .bold, design: .rounded))
+                    Text("z").font(.system(.footnote, design: .rounded).weight(.bold))
+                        .scaleEffect(1 + CGFloat(i) * 0.3)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // scales, but stays inside the drawing
                         .foregroundStyle(PofudukColor.accent.opacity(1 - phase))
                         .position(x: 160 + CGFloat(phase) * 16, y: 50 - CGFloat(phase) * 40)
                 }
@@ -122,7 +124,8 @@ struct MoodDecorations: View {
                         .position(x: 10 - CGFloat(i) * 6, y: 112)
                 }
             case .surprised:
-                Text("!").font(.system(size: 28, weight: .heavy, design: .rounded))
+                Text("!").font(.system(.title, design: .rounded).weight(.heavy))
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .foregroundStyle(PofudukColor.accent).position(x: 170, y: 36)
             case .warning:
                 Image(systemName: "exclamationmark.triangle.fill")
