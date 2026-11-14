@@ -28,11 +28,19 @@ struct AskBar: View {
                 .scrollIndicators(.hidden)
             }
             HStack(spacing: 10) {
-                TextField(conversation.isListening ? "Dinliyorum…" : "Pofuduk'a sor…", text: $conversation.inputText)
+                // Grows up to 3 lines so long questions / large text sizes are never clipped (a11y audit).
+                TextField(conversation.isListening ? "Dinliyorum…" : "Pofuduk'a sor…", text: $conversation.inputText, axis: .vertical)
+                    .lineLimit(1...3)
                     .font(PofudukFont.body)
                     .focused($focused)
                     .submitLabel(.send)
-                    .onSubmit { Task { await conversation.send() } }
+                    .onChange(of: conversation.inputText) { _, text in
+                        // Return key in a vertical field inserts "\n": treat it as "send".
+                        guard text.contains("\n") else { return }
+                        conversation.inputText = text.replacingOccurrences(of: "\n", with: "")
+                        focused = false
+                        Task { await conversation.send() }
+                    }
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(PofudukColor.surfaceStrong, in: Capsule())
                     .overlay(Capsule().strokeBorder(conversation.isListening ? PofudukColor.accent : PofudukColor.surfaceStroke,
