@@ -2,6 +2,8 @@
 rem Pofuduk console demo with live weather (Windows).
 rem Usage: scripts\pofuduk.cmd [il] [--stil samimi^|sakaci^|sakin] [--kisa] [--ses] [--soru "metin"]
 rem Example: scripts\pofuduk.cmd Ankara --ses
+rem vcvars looks for vswhere.exe on PATH; without it, it prints a harmless but confusing warning.
+set "PATH=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer;%PATH%"
 call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 rem UTF-8 console for Turkish text (after vcvars, which breaks under code page 65001).
 chcp 65001 >nul

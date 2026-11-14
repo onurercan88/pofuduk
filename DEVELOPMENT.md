@@ -12,10 +12,11 @@ Requires the Swift toolchain (`winget install Swift.Toolchain`) plus Visual Stud
 ## Console demo (Windows, live data)
 Pofuduk's engines in a terminal, with real Open-Meteo data. No Mac or iPhone needed.
 ```
-scripts\pofuduk.cmd Ankara
-scripts\pofuduk.cmd İzmir --stil sakaci --ses
-scripts\pofuduk.cmd Bursa --soru "yarin yagmur var mi"
+.\scripts\pofuduk.cmd Ankara
+.\scripts\pofuduk.cmd İzmir --stil sakaci --ses
+.\scripts\pofuduk.cmd Bursa --soru "yarin yagmur var mi"
 ```
+(In PowerShell the leading `.\` is required; in cmd.exe `scripts\pofuduk.cmd` also works.)
 - Shows: current weather, the briefing (the morning greeting between 07:30 and noon), the 12-hour forecast, "Bugün Ne Giysem?", the notifications that would be planned, and the MGM status. Then you can ask questions until you type `çık`.
 - `--ses` reads answers aloud with the Windows Turkish voice "Microsoft Tolga" (`scripts\speak.ps1`). `--kisa` gives the short briefing. `--stil samimi|sakaci|sakin` picks the tone.
 - Questions can be typed without Turkish letters ("yarin hava nasil").

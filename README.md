@@ -25,7 +25,7 @@ See **DEVELOPMENT.md**. Short version:
 brew install xcodegen && xcodegen generate && open Pofuduk.xcodeproj
 ```
 Core tests anywhere Swift runs: `cd PofudukCore && swift test` (Windows: `scripts\swift-core.cmd test`).
-Try Pofuduk's brain with live data on Windows: `scripts\pofuduk.cmd Ankara --ses` (see DEVELOPMENT.md).
+Try Pofuduk's brain with live data on Windows (PowerShell): `.\scripts\pofuduk.cmd Ankara --ses` (see DEVELOPMENT.md).
 
 ## Configuration
 | Setting | Where | Default |
