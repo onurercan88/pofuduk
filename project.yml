@@ -29,6 +29,8 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [fetch]
+        # Only standard HTTPS (exempt) → no export-compliance question on each TestFlight build.
+        ITSAppUsesNonExemptEncryption: false
         BGTaskSchedulerPermittedIdentifiers: [com.pofuduk.app.refresh]
         # Set ONLY after MGM grants written permission for an official CAP feed.
         MGMWarningFeedURL: ""

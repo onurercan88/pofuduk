@@ -10,7 +10,7 @@ Status as of 2026-11-14. ✅ done · ⛔ blocker · ☐ to do.
 - ☐ **WeatherAPI (optional):** not needed for an Open-Meteo-only release. If used, its key must not ship in the binary: use the backend proxy (ASP.NET Core, NOTIFICATIONS.md / spec §22).
 - ☐ **WeatherAPI disclaimer (only if WeatherAPI is used):** check the exact end-user disclaimer wording WeatherAPI's terms require, and replace the generic footer text with it.
 - ⛔ **MGM warnings:** live data needs written permission and a feed. Until then the app shows "unavailable" plus the official link, which is acceptable to ship.
-- ☐ Apple Developer account, bundle ID `com.pofuduk.app`, signing.
+- ☐ Apple Developer account, unique bundle ID, App Store Connect API key (Admin) and GitHub secrets. Builds are signed and uploaded by `.github/workflows/testflight.yml` (manual run; see DEVICE_TESTING.md, Yol B).
 
 ## Quality (Phase 12)
 - ✅ Unit tests: core engines (Windows + macOS CI). Integration tests: provider → briefing → subtitles, conversation, notifications/morning (fixtures). Live provider test is opt-in (`POFUDUK_LIVE_TESTS=1`).

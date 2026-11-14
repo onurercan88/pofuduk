@@ -31,15 +31,31 @@ Uygulamayı gerçek bir iPhone'a kurmanın iki yolu var. Mac'in yoksa **Yol B**'
 ## Yol B — Mac olmadan, TestFlight ile
 Uygulama GitHub Actions'taki macOS makinesinde derlenir ve TestFlight'a yüklenir. Sen iPhone'a TestFlight uygulamasından kurarsın.
 
-1. **Apple Developer Program**'a katıl (https://developer.apple.com/programs/ — yıllık 99 USD). App Store yayını için zaten gerekli.
-2. **App Store Connect**'te (https://appstoreconnect.apple.com):
-   1. Apps › "+" › New App: platform iOS, ad "Pofuduk", Bundle ID `com.pofuduk.app` (önce developer.apple.com › Identifiers bölümünde oluştur).
-   2. Users and Access › Integrations › **App Store Connect API** › yeni anahtar oluştur (rol: App Manager). **Issuer ID**, **Key ID** ve indirilen **.p8** dosyasını sakla. .p8 dosyası yalnızca bir kez indirilebilir.
-3. **GitHub'a gizli değer olarak ekle** (repo › Settings › Secrets and variables › Actions):
-   - `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_PRIVATE_KEY` (.p8 dosyasının içeriği), `APPLE_TEAM_ID`.
-   - Bu değerleri sohbete yazma; doğrudan GitHub ekranına gir.
-4. **Bana haber ver:** TestFlight'a yükleyen CI adımını (arşivleme ve yükleme) ben eklerim. Bu adım henüz projede yok.
-5. iPhone'a **TestFlight** uygulamasını kur. App Store Connect › TestFlight › Internal Testing'e kendini ekle. Gelen davetle Pofuduk'u kur.
+1. **Apple Developer Program**'a katıl (https://developer.apple.com/programs/ — yıllık 99 USD). App Store yayını için zaten gerekli. Onay birkaç saat ile birkaç gün sürebilir.
+2. **Team ID'ni bul:** developer.apple.com › Account › **Membership details** › "Team ID" (10 karakter, ör. `AB12CD34EF`).
+3. **Bundle ID'yi kaydet:** developer.apple.com › Certificates, IDs & Profiles › Identifiers › "+" › App IDs › App:
+   - Description: `Pofuduk`
+   - Bundle ID (Explicit): benzersiz olmalı, ör. `com.<soyadın>.pofuduk`. `com.pofuduk.app` başkası tarafından alınmış olabilir.
+   - Capabilities bölümünde ek bir şey seçmene gerek yok.
+4. **App Store Connect'te uygulamayı oluştur** (https://appstoreconnect.apple.com › Apps › "+" › New App):
+   - Platform: iOS · Name: `Pofuduk: Konuşan Hava Durumu` (alınmışsa küçük bir değişiklik yap) · Primary Language: Turkish
+   - Bundle ID: 3. adımda oluşturduğun · SKU: `pofuduk-ios`
+5. **API anahtarı oluştur:** App Store Connect › Users and Access › Integrations › **App Store Connect API** › Team Keys › "+":
+   - Name: `GitHub CI` · Access: **Admin**. CI'ın imzalama sertifikasını kendisi oluşturabilmesi için bu rol gerekli.
+   - **Issuer ID** (sayfanın üstünde) ve **Key ID**'yi not al, **.p8** dosyasını indir. Dosya yalnızca bir kez indirilebilir; güvenli bir yerde sakla.
+6. **GitHub'a ekle** (github.com/onurercan88/pofuduk › Settings › Secrets and variables › Actions). Bu değerleri **sohbete yazma**; doğrudan GitHub ekranına gir.
+   - *Secrets* sekmesi › New repository secret:
+     - `ASC_ISSUER_ID` = Issuer ID
+     - `ASC_KEY_ID` = Key ID
+     - `ASC_PRIVATE_KEY` = .p8 dosyasını Not Defteri ile aç, `-----BEGIN PRIVATE KEY-----` satırından `-----END PRIVATE KEY-----` satırına kadar tamamını yapıştır
+     - `APPLE_TEAM_ID` = Team ID
+   - *Variables* sekmesi › New repository variable:
+     - `APP_BUNDLE_ID` = 3. adımdaki Bundle ID
+7. **Derle ve yükle:** github.com/onurercan88/pofuduk › **Actions** › **TestFlight** › **Run workflow**. Yaklaşık 15–20 dakika sürer. Bitince bana haber ver, sonucu birlikte kontrol edelim.
+8. **TestFlight'ta kendini ekle:** App Store Connect › Pofuduk › **TestFlight**. Yüklenen sürümün işlenmesini bekle (10–30 dk), sonra Internal Testing › "+" › yeni grup › kendi Apple hesabını ekle.
+9. iPhone'a App Store'dan **TestFlight** uygulamasını kur, aynı Apple ID ile gir, gelen davetten **Pofuduk**'u kur.
+
+> Her "Run workflow" yeni bir yapı numarasıyla yükler. Kod değişince 7. adımı tekrarlaman yeterli; TestFlight güncellemeyi iPhone'a getirir.
 
 ---
 
