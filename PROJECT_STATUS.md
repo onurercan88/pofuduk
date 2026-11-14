@@ -28,7 +28,7 @@ _Last updated: 2026-11-14_
 - [ ] Turkish speech listened to on a real device
 - [ ] App icon artwork
 
-### Phase 3 — Weather integration ✅ (live UI screenshot pending)
+### Phase 3 — Weather integration ✅
 - [x] Provider terms checked (WeatherAPI: commercial OK on free; Open-Meteo: non-commercial only)
 - [x] `HTTPClient` abstraction + URLSession implementation (works on iOS and Windows)
 - [x] `OpenMeteoProvider` (WMO codes, local-time parsing, UV from the current hour) — fixture-tested; live call checked from Windows
@@ -38,7 +38,8 @@ _Last updated: 2026-11-14_
 - [x] Keychain key store (DEBUG env-var seeding); app runs live by default, demo only via launch argument
 - [x] Error UI (error mood, honest unavailable briefing, retry card); attribution + disclaimer footer
 - [ ] Exact WeatherAPI disclaimer wording (check before release)
-- [ ] Simulator screenshot showing live data (first attempt was still loading after 8 s)
+- [x] Simulator screenshot showing live Open-Meteo data (CI `live-light.png`)
+- [ ] Polish: the subtitle sentence transition slides in from the bottom edge and briefly overlaps the progress dots; switch to a small offset + fade
 
 ### Phase 4+ — not started
 See ROADMAP.md.
