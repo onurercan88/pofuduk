@@ -4,6 +4,8 @@ import PofudukCore
 /// Pofuduk design tokens. All colours adapt to light/dark mode.
 enum PofudukColor {
     static let ink = Color(light: .init(red: 0.17, green: 0.19, blue: 0.33), dark: .init(red: 0.95, green: 0.95, blue: 1.0))
+    /// Text on `ink`-filled surfaces (always high contrast).
+    static let inkInverse = Color(light: .white, dark: .init(red: 0.10, green: 0.11, blue: 0.20))
     static let inkSecondary = Color(light: .init(red: 0.36, green: 0.38, blue: 0.52), dark: .init(red: 0.78, green: 0.80, blue: 0.90))
     static let surface = Color(light: .white.opacity(0.62), dark: .init(red: 0.16, green: 0.17, blue: 0.27).opacity(0.72))
     static let surfaceStroke = Color(light: .white.opacity(0.9), dark: .white.opacity(0.12))

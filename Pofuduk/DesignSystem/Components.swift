@@ -54,10 +54,10 @@ struct SquishButtonStyle: ButtonStyle {
 }
 
 /// Small text badge; carries text so meaning never depends on colour alone.
+/// Solid ink pill → high contrast on every weather background (accessibility audit).
 struct Badge: View {
     let text: String
     var systemImage: String?
-    var tint: Color = PofudukColor.accent
 
     var body: some View {
         HStack(spacing: 4) {
@@ -67,7 +67,7 @@ struct Badge: View {
         .font(PofudukFont.caption)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(tint.opacity(0.18), in: Capsule())
-        .foregroundStyle(PofudukColor.ink)
+        .background(PofudukColor.ink.opacity(0.88), in: Capsule())
+        .foregroundStyle(PofudukColor.inkInverse)
     }
 }
