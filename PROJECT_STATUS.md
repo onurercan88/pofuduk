@@ -54,7 +54,7 @@ _Last updated: 2026-11-14_
 - [ ] Live-data CI screenshot is best-effort: on 2026-11-14 the GitHub macOS runner could not reach api.open-meteo.com (app −1001 timeouts; host curl failed too). The app showed the correct honest error. Likely IP throttling of shared runners → another reason for WeatherAPI + backend proxy in production.
 - [ ] Real-device test of the permission prompt, GPS fix and district search (not possible in CI)
 
-### Phase 5 — Turkish voice & conversation 🟡 (pending CI)
+### Phase 5 — Turkish voice & conversation ✅ (CI: 75 core, 16 VM, 1 UI tests pass; ask bar screenshot reviewed)
 - [x] `WeatherQueryParser`: deterministic Turkish (dates, weekdays, weekend, day parts, "saat 17.00", provinces with case suffixes, topics) — tested
 - [x] `WeatherIntentResolver` + `ConversationManager`: follow-ups inherit date/day part/city; 10-minute context; reset on location change — tested
 - [x] `ForecastDateResolver`: weekend/weekday rules, midnight, other time zones, DST, provider coverage — tested
@@ -64,6 +64,7 @@ _Last updated: 2026-11-14_
 - [x] Microphone: Speech framework tr-TR, permission asked on first tap, on-device recognition required where supported, server use disclosed, 10 s auto-stop, listening/thinking moods
 - [ ] District-level questions ("Kaş'ta") fall back to the current place (the answer names the place); geocoding in questions comes in Phase 9
 - [ ] Turkish voice selection UI and speech-rate setting → Phase 11 (settings)
+- [ ] Real-device test of the microphone (simulator CI covers only the logic, using a stub recognizer)
 
 ### Phase 6+ — not started
 See ROADMAP.md.
