@@ -39,6 +39,8 @@ final class HomeViewModel {
     var showTranscript = false
     var locationPrompt: LocationPrompt?
     var showLocationPicker = false
+    var showClothing = false
+    private(set) var clothingToday: ClothingRecommendation?
     /// What the bubble currently speaks/shows: the main briefing or the latest answer.
     private(set) var spoken: Briefing?
     let conversation: ConversationViewModel
@@ -79,6 +81,21 @@ final class HomeViewModel {
         // A serious main briefing keeps warning mode even after a casual answer.
         let resting: CharacterMood = briefing?.restingMood == .warning ? .warning : (spoken ?? briefing)?.restingMood ?? .idle
         return CharacterAppearance(mood: resting, theme: theme)
+    }
+
+    /// Clothing advice for today (offset 0) or tomorrow (offset 1); nil if the forecast doesn't cover it.
+    func clothing(dayOffset: Int) -> ClothingRecommendation? {
+        guard let snapshot else { return nil }
+        if dayOffset == 0 { return clothingToday }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = snapshot.place.timeZone
+        let now = container.now()
+        guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now) else { return nil }
+        return ClothingRecommendationEngine().recommend(for: snapshot, day: day, now: now)
+    }
+
+    func speakClothing(_ rec: ClothingRecommendation) {
+        present(Briefing(sentences: rec.sentences, restingMood: .happy, theme: briefing?.theme ?? .cloudy))
     }
 
     /// Speaks an answer through the same subtitle/speech pipeline as the briefing.
@@ -123,6 +140,10 @@ final class HomeViewModel {
         guard !hasAppeared else { return }
         hasAppeared = true
         await load(autoSpeak: true, greetSleepily: true)
+        #if DEBUG
+        // CI screenshots: `-pofuduk.openClothing YES`
+        if defaults.bool(forKey: "pofuduk.openClothing"), clothingToday != nil { showClothing = true }
+        #endif
     }
 
     func refresh() async {
@@ -242,7 +263,8 @@ final class HomeViewModel {
             self.snapshot = snapshot
             self.analysis = analysis
             self.warningAvailability = warnings
-            self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings)
+            self.clothingToday = ClothingRecommendationEngine().recommend(for: snapshot, now: now)
+            self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
             loadState = .loaded
         } catch {
             snapshot = nil

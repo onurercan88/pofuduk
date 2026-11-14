@@ -115,7 +115,7 @@ final class ConversationFlowTests: XCTestCase {
         var m = ConversationManager()
         let q = m.interpret("Bugün ne giysem?", now: now)
         let text = answers.answer(q, snapshot: snapshot(.snowy), now: now).fullText
-        XCTAssertTrue(text.contains("kalın bir mont"), text)
+        XCTAssertTrue(text.contains("Kalın bir mont"), text)
     }
 
     func testOutOfRangeIsHonest() {

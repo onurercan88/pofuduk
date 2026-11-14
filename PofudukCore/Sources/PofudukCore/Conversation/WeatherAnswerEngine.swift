@@ -234,25 +234,11 @@ public struct WeatherAnswerEngine: Sendable {
         return "\(c.label) UV indeksi \(level), düşük seviyede."
     }
 
-    /// Basic, deterministic advice (full ClothingRecommendationEngine comes in Phase 6).
     private func clothing(_ c: DayContext) -> [String] {
-        let temps = c.hours.compactMap { $0.feelsLike ?? $0.temperature }
-        let lo = temps.min() ?? c.daily?.minTemperature
-        let hi = temps.max() ?? c.daily?.maxTemperature
-        guard let lo, let hi else { return [noData(c)] }
-        let advice: String
-        switch lo {
-        case ..<5: advice = "kalın bir mont, atkı ve bere iyi olur"
-        case ..<12: advice = "bir mont ya da kalın bir ceket almanı öneririm"
-        case ..<18: advice = "ince bir mont veya sweatshirt yeterli olabilir"
-        case ..<24: advice = "hafif bir üst yeterli; akşam için ince bir şey alabilirsin"
-        default: advice = "hafif ve rahat kıyafetler tercih edebilirsin"
+        guard let rec = ClothingRecommendationEngine(thresholds: thresholds).recommend(for: c.snapshot, day: c.day, now: c.now) else {
+            return [noData(c)]
         }
-        var out = ["\(c.label) hissedilen sıcaklık \(Int(lo.rounded())) ile \(Int(hi.rounded())) derece arasında; \(advice)."]
-        if let p = c.hours.isEmpty ? nil : summary.precipitationOutlook(in: c.hours), p.isLikely {
-            out.append("Yağış beklendiği için şemsiye ve su geçirmeyen ayakkabı da iyi fikir.")
-        }
-        return out
+        return rec.sentences
     }
 
     private func goingOut(_ c: DayContext) -> [String] {

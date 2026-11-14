@@ -30,6 +30,9 @@ struct HomeView: View {
                     if !viewModel.upcomingHours.isEmpty, let place = viewModel.snapshot?.place {
                         HourlyTimeline(hours: viewModel.upcomingHours, timeZone: place.timeZone)
                     }
+                    if let clothing = viewModel.clothingToday, viewModel.snapshot != nil {
+                        ClothingCard(recommendation: clothing) { viewModel.showClothing = true }
+                    }
                     if let tomorrow = viewModel.tomorrow {
                         TomorrowCard(day: tomorrow)
                     }
@@ -87,6 +90,12 @@ struct HomeView: View {
                         onAllow: { Task { await viewModel.allowDeviceLocation() } },
                         onChooseCity: { viewModel.chooseCityInstead() },
                         onApproximate: { Task { await viewModel.useApproximateLocation() } })
+                }
+            Color.clear
+                .sheet(isPresented: $viewModel.showClothing) {
+                    ClothingDetailView(theme: viewModel.appearance.theme,
+                                       recommendationFor: { viewModel.clothing(dayOffset: $0) },
+                                       onSpeak: { viewModel.speakClothing($0) })
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showLocationPicker) {

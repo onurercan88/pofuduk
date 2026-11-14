@@ -72,6 +72,17 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(vm.spoken?.fullText.hasPrefix("Yarın") == true, vm.spoken?.fullText ?? "")
     }
 
+    func testClothingRecommendationIsAvailableAndSpeakable() async throws {
+        let speech = PreviewSpeechService()
+        let vm = makeDemoViewModel(speech: speech)
+        await vm.onAppear()
+        let today = try XCTUnwrap(vm.clothingToday)
+        XCTAssertFalse(today.items.isEmpty)
+        XCTAssertNotNil(vm.clothing(dayOffset: 1), "Demo data covers tomorrow")
+        vm.speakClothing(today)
+        XCTAssertEqual(speech.spokenSentences, today.sentences)
+    }
+
     func testMicrophoneDeniedExplainsAndDoesNotListen() async {
         let recognizer = StubRecognizer()
         recognizer.authorized = false

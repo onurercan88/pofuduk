@@ -13,7 +13,8 @@ public struct CharacterPersonalityEngine: Sendable {
 
     // MARK: - Briefing
 
-    public func briefing(for analysis: WeatherAnalysis, warnings: [OfficialWarning] = []) -> Briefing {
+    public func briefing(for analysis: WeatherAnalysis, warnings: [OfficialWarning] = [],
+                         clothing: ClothingRecommendation? = nil) -> Briefing {
         let tz = analysis.place.timeZone
         let activeWarnings = warnings
             .filter { $0.isActive(at: analysis.analyzedAt) }
@@ -52,6 +53,10 @@ public struct CharacterPersonalityEngine: Sendable {
         }
         if length == .detailed, analysis.isHighUV, let uv = analysis.uvMax {
             s.append("UV indeksi \(Int(uv.rounded())) seviyesine kadar çıkıyor, güneşten korunmayı unutma.")
+        }
+
+        if length == .detailed, let clothing, clothing.isNoteworthy {
+            s.append(clothing.briefingSentence)
         }
 
         s.append(closing(theme: analysis.theme, serious: serious, precipitation: analysis.precipitation))

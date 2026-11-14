@@ -44,6 +44,12 @@ jobs:
           }
           for s in sunny rainyAfternoon stormy snowy cloudy windy; do shoot "$s" light; done
           for s in sunny rainyAfternoon stormy; do shoot "$s" dark; done
+          # Clothing detail sheet (demo, light)
+          xcrun simctl ui "$SIM_ID" appearance light
+          xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
+          xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario windy -pofuduk.openClothing YES
+          sleep 8
+          xcrun simctl io "$SIM_ID" screenshot "screenshots/clothing-windy-light.png"
           # "live" is not a demo scenario → first-launch location explanation sheet
           shoot live light 10
           # Manual province (Ankara, plate 6) → real Open-Meteo data (no key in CI)
