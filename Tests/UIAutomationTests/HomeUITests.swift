@@ -60,6 +60,10 @@ final class HomeUITests: XCTestCase {
     /// Apple's automated accessibility audit (iOS 17+) on the home screen.
     func testHomeAccessibilityAudit() throws {
         let app = launchDemo("sunny")
-        try app.performAccessibilityAudit()
+        try app.performAccessibilityAudit { issue in
+            // Log every finding so CI shows exactly which element failed; nothing is ignored.
+            print("AUDIT: \(issue.auditType) | \(issue.compactDescription) | \(issue.element?.label ?? "-") | \(issue.element?.elementType.rawValue ?? 0)")
+            return false
+        }
     }
 }

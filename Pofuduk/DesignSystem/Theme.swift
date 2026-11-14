@@ -7,7 +7,8 @@ enum PofudukColor {
     static let inkSecondary = Color(light: .init(red: 0.36, green: 0.38, blue: 0.52), dark: .init(red: 0.78, green: 0.80, blue: 0.90))
     static let surface = Color(light: .white.opacity(0.62), dark: .init(red: 0.16, green: 0.17, blue: 0.27).opacity(0.72))
     static let surfaceStroke = Color(light: .white.opacity(0.9), dark: .white.opacity(0.12))
-    static let accent = Color(light: .init(red: 0.45, green: 0.42, blue: 0.95), dark: .init(red: 0.67, green: 0.64, blue: 1.0))
+    /// Light variant ≈ 5.9:1 on white (WCAG AA for small text); found by the accessibility audit.
+    static let accent = Color(light: .init(red: 0.36, green: 0.32, blue: 0.82), dark: .init(red: 0.67, green: 0.64, blue: 1.0))
     static let highlight = Color(light: .init(red: 1.0, green: 0.86, blue: 0.45), dark: .init(red: 0.98, green: 0.80, blue: 0.35))
 
     // Character palette
