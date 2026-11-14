@@ -8,10 +8,14 @@ struct HomeHeader: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 if let place = viewModel.snapshot?.place {
-                    Label(place.displayName, systemImage: "location.fill")
-                        .font(PofudukFont.title)
-                        .foregroundStyle(PofudukColor.ink)
-                        .labelStyle(.titleAndIcon)
+                    Button { viewModel.openLocationPicker() } label: {
+                        Label(place.displayName, systemImage: place.source == .gps ? "location.fill" : "mappin.and.ellipse")
+                            .font(PofudukFont.title)
+                            .foregroundStyle(PofudukColor.ink)
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(viewModel.isDemoMode ? "" : "Konumu değiştir")
                     TimelineView(.everyMinute) { context in
                         Text("\(TurkishFormatting.longDate(context.date, timeZone: place.timeZone)) · \(TurkishFormatting.clockTime(context.date, timeZone: place.timeZone))")
                             .font(PofudukFont.caption)
@@ -22,6 +26,10 @@ struct HomeHeader: View {
                 }
                 if viewModel.isDemo {
                     Badge(text: "Örnek veri — gerçek tahmin değil", systemImage: "info.circle")
+                        .padding(.top, 4)
+                }
+                if viewModel.isApproximateLocation {
+                    Badge(text: "Yaklaşık konum (IP)", systemImage: "network")
                         .padding(.top, 4)
                 }
             }

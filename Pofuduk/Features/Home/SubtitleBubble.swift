@@ -14,7 +14,7 @@ struct SubtitleBubble: View {
                     Text(highlighted(sentence))
                         .id(track.currentIndex)
                         .transition(reduceMotion ? .opacity : .asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            insertion: .offset(y: 10).combined(with: .opacity),
                             removal: .opacity))
                 } else {
                     Text("Pofuduk konuşmaya hazırlanıyor…")

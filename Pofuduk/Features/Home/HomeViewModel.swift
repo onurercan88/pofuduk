@@ -8,6 +8,19 @@ final class HomeViewModel {
     enum LoadState: Equatable {
         case idle, loading, loaded
         case failed(String)
+        /// No place yet: waiting for the user's location choice.
+        case needsLocation
+    }
+
+    enum LocationPrompt: Identifiable, Equatable {
+        case explanation
+        case issue(LocationIssue)
+        var id: String {
+            switch self {
+            case .explanation: return "explanation"
+            case .issue(let i): return "issue-\(i)"
+            }
+        }
     }
 
     private(set) var loadState: LoadState = .idle
@@ -24,6 +37,8 @@ final class HomeViewModel {
         didSet { defaults.set(isSoundOn, forKey: Self.soundKey) }
     }
     var showTranscript = false
+    var locationPrompt: LocationPrompt?
+    var showLocationPicker = false
 
     private let container: DependencyContainer
     private let defaults: UserDefaults
@@ -46,6 +61,7 @@ final class HomeViewModel {
         switch loadState {
         case .loading, .idle: return CharacterAppearance(mood: .thinking, theme: theme)
         case .failed: return CharacterAppearance(mood: .error, theme: theme)
+        case .needsLocation: return CharacterAppearance(mood: .listening, theme: .cloudy)
         case .loaded: break
         }
         if track.status == .speaking { return CharacterAppearance(mood: .speaking, theme: theme) }
@@ -56,6 +72,9 @@ final class HomeViewModel {
     var isDemoMode: Bool { demoScenario != nil }
     var isFailed: Bool { if case .failed = loadState { return true } else { return false } }
     var isStale: Bool { analysis?.isStale ?? false }
+    var needsLocation: Bool { loadState == .needsLocation }
+    var isApproximateLocation: Bool { snapshot?.place.source == .ipApproximate }
+    var isIPAvailable: Bool { container.location.isIPAvailable }
 
     var upcomingHours: [HourlyForecast] {
         guard let snapshot else { return [] }
@@ -91,6 +110,43 @@ final class HomeViewModel {
 
     func retry() async {
         await load(autoSpeak: true, greetSleepily: false, forceRefresh: true)
+    }
+
+    // MARK: Location intents
+
+    /// User agreed after Pofuduk's explanation → only now is the system prompt shown.
+    func allowDeviceLocation() async {
+        locationPrompt = nil
+        await container.location.requestPermission()
+        await load(autoSpeak: true, greetSleepily: false)
+    }
+
+    func useApproximateLocation() async {
+        locationPrompt = nil
+        showLocationPicker = false
+        container.location.setMode(.ipApproximate)
+        await load(autoSpeak: true, greetSleepily: false)
+    }
+
+    func selectPlace(_ place: Place) async {
+        locationPrompt = nil
+        showLocationPicker = false
+        container.location.selectManual(place)
+        await load(autoSpeak: true, greetSleepily: false, forceRefresh: true)
+    }
+
+    func chooseCityInstead() {
+        locationPrompt = nil
+        // Let the explanation sheet finish dismissing before presenting the picker.
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            showLocationPicker = true
+        }
+    }
+
+    func openLocationPicker() {
+        guard !isDemoMode else { return }
+        showLocationPicker = true
     }
 
     func selectScenario(_ scenario: MockWeatherData.Scenario) async {
@@ -136,7 +192,23 @@ final class HomeViewModel {
     private func load(autoSpeak: Bool, greetSleepily: Bool, forceRefresh: Bool = false) async {
         container.speech.stop()
         loadState = .loading
-        let place = container.defaultPlace
+
+        let place: Place
+        if demoScenario != nil {
+            place = container.demoPlace
+        } else {
+            switch await container.location.resolve() {
+            case .resolved(let resolved):
+                place = resolved
+            case .needsPermissionExplanation:
+                enterNeedsLocation(.explanation)
+                return
+            case .needsUserChoice(let issue):
+                enterNeedsLocation(.issue(issue))
+                return
+            }
+        }
+
         let repository = container.weatherRepository(demoScenario: demoScenario)
         do {
             let snapshot = try await repository.snapshot(for: place, forceRefresh: forceRefresh)
@@ -166,9 +238,21 @@ final class HomeViewModel {
         playOrReplay()
     }
 
+    /// No weather is shown or spoken until the user decides how to share their location.
+    private func enterNeedsLocation(_ prompt: LocationPrompt) {
+        snapshot = nil
+        analysis = nil
+        warningAvailability = nil
+        briefing = container.personality.locationNeededBriefing()
+        track.load(briefing?.sentences ?? [])
+        track.showAllWithoutAudio()
+        loadState = .needsLocation
+        locationPrompt = prompt
+    }
+
     private var isMorning: Bool {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = container.defaultPlace.timeZone
+        calendar.timeZone = snapshot?.place.timeZone ?? .current
         return (5..<11).contains(calendar.component(.hour, from: container.now()))
     }
 

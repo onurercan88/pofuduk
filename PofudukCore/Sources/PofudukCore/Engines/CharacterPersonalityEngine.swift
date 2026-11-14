@@ -60,6 +60,15 @@ public struct CharacterPersonalityEngine: Sendable {
         return Briefing(sentences: s, restingMood: mood, theme: analysis.theme, advice: advice(for: analysis))
     }
 
+    /// Shown while no location is available. Contains no weather claims.
+    public func locationNeededBriefing() -> Briefing {
+        Briefing(
+            sentences: ["Merhaba! Ben Pofuduk.", "Havayı anlatabilmem için önce nerede olduğunu bilmem gerekiyor."],
+            restingMood: .idle,
+            theme: .cloudy
+        )
+    }
+
     /// Spoken when no data could be obtained. Never invents values.
     public func unavailableBriefing(reason: String) -> Briefing {
         Briefing(

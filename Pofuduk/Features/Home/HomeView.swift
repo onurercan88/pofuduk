@@ -38,6 +38,17 @@ struct HomeView: View {
                     }
                     MGMStatusCard(availability: viewModel.warningAvailability)
 
+                    if viewModel.needsLocation {
+                        SoftCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("Konum gerekli", systemImage: "location.slash")
+                                    .font(PofudukFont.headline).foregroundStyle(PofudukColor.ink)
+                                Button("Konum seç") { viewModel.openLocationPicker() }
+                                    .buttonStyle(.borderedProminent).tint(PofudukColor.accent)
+                            }
+                        }
+                    }
+
                     if viewModel.isFailed {
                         RetryCard { Task { await viewModel.retry() } }
                     }
@@ -58,6 +69,28 @@ struct HomeView: View {
         .task { await viewModel.onAppear() }
         .sheet(isPresented: $viewModel.showTranscript) {
             TranscriptSheet(sentences: viewModel.track.sentences)
+        }
+        .background {
+            // Separate anchors so the location sheets never compete with the transcript sheet.
+            Color.clear
+                .sheet(item: $viewModel.locationPrompt) { prompt in
+                    LocationPermissionSheet(
+                        prompt: prompt, isIPAvailable: viewModel.isIPAvailable,
+                        onAllow: { Task { await viewModel.allowDeviceLocation() } },
+                        onChooseCity: { viewModel.chooseCityInstead() },
+                        onApproximate: { Task { await viewModel.useApproximateLocation() } })
+                }
+            Color.clear
+                .sheet(isPresented: $viewModel.showLocationPicker) {
+                    LocationPickerView(
+                        isIPAvailable: viewModel.isIPAvailable,
+                        onSelect: { place in Task { await viewModel.selectPlace(place) } },
+                        onUseDevice: {
+                            viewModel.showLocationPicker = false
+                            Task { await viewModel.allowDeviceLocation() }
+                        },
+                        onApproximate: { Task { await viewModel.useApproximateLocation() } })
+                }
         }
     }
 
