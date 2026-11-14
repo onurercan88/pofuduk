@@ -41,7 +41,7 @@ _Last updated: 2026-11-14_
 - [x] Simulator screenshot showing live Open-Meteo data (CI `live-light.png`)
 - [ ] Polish: the subtitle sentence transition slides in from the bottom edge and briefly overlaps the progress dots; switch to a small offset + fade
 
-### Phase 4 — Location 🟡 (pending CI verification)
+### Phase 4 — Location ✅ (CI: builds, 12 VM + 1 UI tests pass; permission sheet screenshot reviewed)
 - [x] `LocationResolver` policy: explain first, When In Use only, IP only on explicit opt-in, never silent fallback — tested
 - [x] `LocationPreference` persisted (UserDefaults; only the user's choice, never GPS fixes)
 - [x] Offline list of 81 provinces with Turkish-aware search; district/city search via MapKit (TR only)
@@ -50,6 +50,9 @@ _Last updated: 2026-11-14_
 - [x] Permission explanation sheet, denied/unavailable alternatives with a Settings link, picker, "Yaklaşık konum" badge
 - [x] No weather is shown or spoken until a location exists (no hard-coded Istanbul in live mode)
 - [x] Subtitle transition polish (small offset + fade)
+- [x] Network: one retry on transport errors; failure reason shown in the retry card; transport error codes logged (no URLs)
+- [ ] Live-data CI screenshot is best-effort: on 2026-11-14 the GitHub macOS runner could not reach api.open-meteo.com (app −1001 timeouts; host curl failed too). The app showed the correct honest error. Likely IP throttling of shared runners → another reason for WeatherAPI + backend proxy in production.
+- [ ] Real-device test of the permission prompt, GPS fix and district search (not possible in CI)
 
 ### Phase 5+ — not started
 See ROADMAP.md.

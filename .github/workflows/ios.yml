@@ -52,7 +52,7 @@ jobs:
           sleep 40
           xcrun simctl io "$SIM_ID" screenshot "screenshots/live-ankara-light.png"
           echo "--- host reachability"
-          curl -s -o /dev/null -w "open-meteo %{http_code} %{time_total}s\n" "https://api.open-meteo.com/v1/forecast?latitude=39.93&longitude=32.86&current=temperature_2m" || true
+          curl -s --max-time 10 -o /dev/null -w "open-meteo %{http_code} %{time_total}s\n" "https://api.open-meteo.com/v1/forecast?latitude=39.93&longitude=32.86&current=temperature_2m" || true
           echo "--- app network log"
           xcrun simctl spawn "$SIM_ID" log show --last 5m --style compact --predicate 'subsystem == "com.pofuduk.app"' | tail -n 20 || true
           ls -la screenshots
