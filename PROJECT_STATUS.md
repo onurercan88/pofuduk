@@ -66,7 +66,15 @@ _Last updated: 2026-11-14_
 - [ ] Turkish voice selection UI and speech-rate setting → Phase 11 (settings)
 - [ ] Real-device test of the microphone (simulator CI covers only the logic, using a stub recognizer)
 
-### Phase 6+ — not started
+### Phase 6 — Clothing recommendations ✅ (CI: 83 core, 17 VM, 1 UI tests pass; detail screen screenshot reviewed)
+- [x] `ClothingRecommendationEngine`: deterministic, configurable `ClothingRules` (felt-temperature bands, layering spread, wind chill, active hours); uses actual temp, feels-like, wind/gusts, rain (likely vs possible; snow → boots), UV, and the morning/evening spread
+- [x] Explains "why" (each reason tied to a data point); no hourly data → no advice
+- [x] Added to the main briefing only when noteworthy (cold, hot, layers, chill, wind, likely rain); one sentence, no umbrella/UV repetition
+- [x] Conversation "ne giysem?" uses the engine
+- [x] Home card + detail screen (today/tomorrow, items, reasons, "Pofuduk anlatsın", non-medical disclaimer)
+- [x] Tests: hot, cold, windy, rainy, large morning/evening difference, mild day not noteworthy, no data, tomorrow + briefing
+
+### Phase 7+ — not started
 See ROADMAP.md.
 
 ## Known limitations
