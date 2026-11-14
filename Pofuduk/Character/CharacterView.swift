@@ -81,7 +81,7 @@ struct CharacterFigure: View {
                 FaceView(mood: mood, theme: theme, time: time, wearsSunglasses: wearsSunglasses)
 
                 if theme == .snowy || theme == .windy {
-                    ScarfView(time: time, windy: theme == .windy).position(x: 100, y: 160)
+                    ScarfView(time: time, windy: theme == .windy).position(x: 100, y: 167)
                 }
                 if wearsSunglasses { SunglassesView().position(x: 100, y: 117) }
 
@@ -132,14 +132,12 @@ struct CloudBody: Shape {
         func circle(_ x: CGFloat, _ y: CGFloat, _ r: CGFloat) -> Path {
             Path(ellipseIn: CGRect(x: (x - r) * sx, y: (y - r) * sy, width: 2 * r * sx, height: 2 * r * sy))
         }
-        var p = Path()
-        p.addRoundedRect(in: CGRect(x: 18 * sx, y: 82 * sy, width: 164 * sx, height: 94 * sy),
-                         cornerSize: CGSize(width: 46 * sx, height: 46 * sy))
-        p.addPath(circle(62, 98, 46))
-        p.addPath(circle(108, 76, 56))
-        p.addPath(circle(152, 100, 42))
-        p.addPath(circle(36, 132, 32))
-        p.addPath(circle(168, 134, 30))
+        // Boolean union → one clean outline (no inner circle edges when stroked).
+        var p = Path(roundedRect: CGRect(x: 18 * sx, y: 82 * sy, width: 164 * sx, height: 94 * sy),
+                     cornerSize: CGSize(width: 46 * sx, height: 46 * sy))
+        for c in [(62.0, 98.0, 46.0), (108, 76, 56), (152, 100, 42), (36, 132, 32), (168, 134, 30)] {
+            p = p.union(circle(c.0, c.1, c.2))
+        }
         return p
     }
 }

@@ -75,8 +75,8 @@ struct ScarfView: View {
 
     var body: some View {
         ZStack {
-            Capsule().fill(red).frame(width: 150, height: 18)
-                .overlay(HStack(spacing: 16) { ForEach(0..<6, id: \.self) { _ in Capsule().fill(stripe.opacity(0.7)).frame(width: 4, height: 14) } })
+            Capsule().fill(red).frame(width: 142, height: 16)
+                .overlay(HStack(spacing: 16) { ForEach(0..<6, id: \.self) { _ in Capsule().fill(stripe.opacity(0.7)).frame(width: 4, height: 11) } })
             // Tail: flutters sideways when windy, hangs when snowy
             RoundedRectangle(cornerRadius: 6).fill(red)
                 .frame(width: 18, height: 36)
