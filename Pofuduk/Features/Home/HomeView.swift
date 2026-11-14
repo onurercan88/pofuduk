@@ -25,7 +25,7 @@ struct HomeView: View {
 
                     hero
 
-                    SubtitleBubble(track: viewModel.track) { viewModel.showTranscript = true }
+                    SubtitleBubble(track: viewModel.track, size: viewModel.preferences.subtitleSize) { viewModel.showTranscript = true }
                         .padding(.top, 4)
 
                     PlaybackControls(viewModel: viewModel)
@@ -88,7 +88,7 @@ struct HomeView: View {
             if phase == .active { Task { await viewModel.sceneDidBecomeActive() } }
         }
         .sheet(isPresented: $viewModel.showTranscript) {
-            TranscriptSheet(sentences: viewModel.track.sentences)
+            TranscriptSheet(sentences: viewModel.track.sentences, size: viewModel.preferences.subtitleSize)
         }
         .background {
             // Separate anchors so the location sheets never compete with the transcript sheet.
@@ -101,13 +101,8 @@ struct HomeView: View {
                         onApproximate: { Task { await viewModel.useApproximateLocation() } })
                 }
             Color.clear
-                .sheet(isPresented: $viewModel.showNotificationSettings) {
-                    NotificationSettingsView(coordinator: viewModel.notifications,
-                                             placeName: viewModel.snapshot?.place.displayName,
-                                             onChangeLocation: {
-                                                 viewModel.showNotificationSettings = false
-                                                 viewModel.chooseCityInstead()
-                                             })
+                .sheet(isPresented: $viewModel.showSettings) {
+                    SettingsView(viewModel: viewModel)
                 }
             Color.clear
                 .sheet(isPresented: $viewModel.showWarnings) {
@@ -160,7 +155,7 @@ struct HomeView: View {
             }
             CharacterView(appearance: viewModel.appearance, size: 230)
                 .padding(.top, 8)
-                .onTapGesture { viewModel.togglePause() }
+                .onTapGesture { viewModel.tapCharacter() }
                 .accessibilityAction(named: "Konuşmayı başlat veya duraklat") { viewModel.togglePause() }
         }
     }

@@ -60,6 +60,12 @@ final class ConversationViewModel {
     /// Context is tied to a place; switching location starts a fresh conversation.
     func resetContext() { manager.reset() }
 
+    func clearHistory() {
+        history = []
+        inputText = ""
+        manager.reset()
+    }
+
     // MARK: - Microphone
 
     func toggleListening() async {

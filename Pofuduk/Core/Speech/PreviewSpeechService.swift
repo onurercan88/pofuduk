@@ -17,7 +17,17 @@ final class PreviewSpeechService: SpeechServicing {
         self.autoFinish = autoFinish
     }
 
+    private(set) var lastRate: Float = 0
+    private(set) var selectedVoice: String?
+
+    func turkishVoices() -> [VoiceOption] {
+        hasTurkishVoice ? [VoiceOption(id: "preview.tr", name: "Önizleme", qualityName: "Standart")] : []
+    }
+
+    func setVoice(_ identifier: String?) { selectedVoice = identifier }
+
     func speak(_ sentences: [String], rate: Float) {
+        lastRate = rate
         stop()
         spokenSentences = sentences
         guard !sentences.isEmpty else { return }

@@ -4,7 +4,20 @@ import PofudukCore
 /// Speech bubble showing exactly the sentence being spoken, with the current word highlighted.
 struct SubtitleBubble: View {
     let track: SubtitleTrack
+    var size: SubtitleSize = .standard
     let onShowTranscript: () -> Void
+
+    /// Dynamic-Type text styles, so the user's iOS text size still applies on top.
+    static func font(for size: SubtitleSize) -> Font {
+        let style: Font.TextStyle
+        switch size {
+        case .standard: style = .title3
+        case .large: style = .title2
+        case .extraLarge: style = .title
+        case .huge: style = .largeTitle
+        }
+        return Font.system(style, design: .rounded).weight(.semibold)
+    }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -21,7 +34,7 @@ struct SubtitleBubble: View {
                         .foregroundStyle(PofudukColor.inkSecondary)
                 }
             }
-            .font(.system(.title3, design: .rounded).weight(.semibold))
+            .font(Self.font(for: size))
             .foregroundStyle(PofudukColor.ink)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,13 +102,14 @@ struct BubbleShape: Shape {
 
 struct TranscriptSheet: View {
     let sentences: [String]
+    var size: SubtitleSize = .standard
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 Text(sentences.joined(separator: " "))
-                    .font(PofudukFont.body)
+                    .font(size == .standard ? PofudukFont.body : SubtitleBubble.font(for: size))
                     .foregroundStyle(PofudukColor.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)

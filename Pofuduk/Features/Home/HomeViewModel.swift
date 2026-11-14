@@ -40,9 +40,18 @@ final class HomeViewModel {
     var locationPrompt: LocationPrompt?
     var showLocationPicker = false
     var showClothing = false
-    var showNotificationSettings = false
     var showTravel = false
     var showWarnings = false
+    var showSettings = false
+    private(set) var preferences: UserPreferences
+    private(set) var isReacting = false
+
+    /// Style/length come from the user's preferences; facts never depend on them.
+    var personality: CharacterPersonalityEngine {
+        CharacterPersonalityEngine(style: preferences.style, length: preferences.briefingLength)
+    }
+    var speechRate: Float { SpeechService.defaultRate * Float(preferences.clampedSpeechRate) }
+    var availableVoices: [VoiceOption] { container.speech.turkishVoices() }
     let travel: TravelWeatherViewModel
     private(set) var isMorningBriefing = false
     var notifications: NotificationCoordinator { container.notifications }
@@ -61,6 +70,9 @@ final class HomeViewModel {
         self.defaults = defaults
         self.isSoundOn = defaults.object(forKey: Self.soundKey) as? Bool ?? true
         self.demoScenario = container.initialDemoScenario
+        let prefs = container.preferencesStore.load()
+        self.preferences = prefs
+        container.speech.setVoice(prefs.voiceIdentifier)
         self.conversation = ConversationViewModel(service: WeatherQueryService(container: container),
                                                   recognizer: container.speechRecognizer, now: container.now)
         self.travel = TravelWeatherViewModel(service: TravelWeatherService(container: container), now: container.now)
@@ -80,6 +92,9 @@ final class HomeViewModel {
         let theme = briefing?.theme ?? .cloudy
         if isWaking { return CharacterAppearance(mood: .sleeping, theme: theme, isMorningGreeting: true) }
         if conversation.isListening { return CharacterAppearance(mood: .listening, theme: theme) }
+        if isReacting {
+            return CharacterAppearance(mood: preferences.style == .playful ? .celebrating : .happy, theme: theme)
+        }
         if conversation.isThinking { return CharacterAppearance(mood: .thinking, theme: theme) }
         switch loadState {
         case .loading, .idle: return CharacterAppearance(mood: .thinking, theme: theme)
@@ -108,6 +123,52 @@ final class HomeViewModel {
 
     func speakClothing(_ rec: ClothingRecommendation) {
         present(Briefing(sentences: rec.sentences, restingMood: .happy, theme: briefing?.theme ?? .cloudy))
+    }
+
+    // MARK: - Personalization
+
+    func updatePreferences(_ change: (inout UserPreferences) -> Void) {
+        let old = preferences
+        change(&preferences)
+        container.preferencesStore.save(preferences)
+        if old.voiceIdentifier != preferences.voiceIdentifier { container.speech.setVoice(preferences.voiceIdentifier) }
+        // Re-word the current briefing in the new style/length (facts unchanged).
+        if (old.style != preferences.style || old.briefingLength != preferences.briefingLength),
+           let analysis, !isMorningBriefing, loadState == .loaded {
+            briefing = personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
+            if spoken == nil, !track.isActive { track.load(briefing?.sentences ?? []); track.showAllWithoutAudio() }
+        }
+    }
+
+    /// Lets the user hear the selected voice and speed.
+    func previewVoice() {
+        present(Briefing(sentences: ["Merhaba! Ben Pofuduk.", "Sesim ve konuşma hızım şimdi böyle."],
+                         restingMood: .happy, theme: briefing?.theme ?? .cloudy))
+    }
+
+    /// Tapping Pofuduk: pause/resume while speaking, otherwise a short happy reaction (no speech).
+    func tapCharacter() {
+        if track.isActive { togglePause(); return }
+        guard !isReacting else { return }
+        isReacting = true
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1200))
+            self?.isReacting = false
+        }
+    }
+
+    /// "Verilerimi sil" — clears everything stored on this device, then starts fresh.
+    func deleteAllData() async {
+        container.speech.stop()
+        await container.deleteAllData()
+        preferences = UserPreferences()
+        container.speech.setVoice(nil)
+        isSoundOn = true
+        defaults.removeObject(forKey: Self.soundKey)
+        conversation.clearHistory()
+        spoken = nil
+        showSettings = false
+        await load(autoSpeak: false, greetSleepily: false, forceRefresh: true)
     }
 
     /// Speaks an answer through the same subtitle/speech pipeline as the briefing.
@@ -216,7 +277,7 @@ final class HomeViewModel {
         guard let briefing = spoken ?? briefing else { return }
         track.load(briefing.sentences)
         if isSoundOn, container.speech.hasTurkishVoice {
-            container.speech.speak(briefing.sentences, rate: SpeechService.defaultRate)
+            container.speech.speak(briefing.sentences, rate: speechRate)
         } else {
             voiceMissing = !container.speech.hasTurkishVoice
             track.showAllWithoutAudio()
@@ -288,7 +349,7 @@ final class HomeViewModel {
                 notifications.markGreeted(timeZone: snapshot.place.timeZone)
                 isMorningBriefing = true
             } else {
-                self.briefing = container.personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
+                self.briefing = personality.briefing(for: analysis, warnings: activeWarnings, clothing: clothingToday)
                 isMorningBriefing = false
             }
             loadState = .loaded
@@ -296,7 +357,7 @@ final class HomeViewModel {
             snapshot = nil
             analysis = nil
             let reason = (error as? WeatherError)?.turkishExplanation ?? WeatherError.network.turkishExplanation
-            briefing = container.personality.unavailableBriefing(reason: reason)
+            briefing = personality.unavailableBriefing(reason: reason)
             loadState = .failed(reason)
         }
         track.load(briefing?.sentences ?? [])
@@ -326,7 +387,7 @@ final class HomeViewModel {
         snapshot = nil
         analysis = nil
         warningAvailability = nil
-        briefing = container.personality.locationNeededBriefing()
+        briefing = personality.locationNeededBriefing()
         track.load(briefing?.sentences ?? [])
         track.showAllWithoutAudio()
         loadState = .needsLocation

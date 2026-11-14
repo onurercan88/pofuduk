@@ -7,12 +7,11 @@ struct NotificationSettingsView: View {
     let coordinator: NotificationCoordinator
     var placeName: String?
     var onChangeLocation: () -> Void = {}
-    @Environment(\.dismiss) private var dismiss
 
     private let configurable: [NotificationCategory] = [.rainSoon, .heavyRain, .severeWeather, .strongWind, .temperatureChange, .mgmWarning]
 
+    /// Pushed inside the Settings navigation stack.
     var body: some View {
-        NavigationStack {
             Form {
                 Section {
                     NavigationLink {
@@ -97,9 +96,7 @@ struct NotificationSettingsView: View {
             }
             .navigationTitle("Bildirimler")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Bitti") { dismiss() } } }
             .task { await coordinator.refreshPermission() }
-        }
     }
 
     /// Binds a minute-of-day preference to a DatePicker (today's date, local time).

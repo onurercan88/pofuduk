@@ -13,6 +13,8 @@ protocol LocationServicing: AnyObject {
     func requestPermission() async
     func setMode(_ mode: LocationMode)
     func selectManual(_ place: Place)
+    /// Forget the saved location choice and last place.
+    func reset()
 }
 
 @MainActor
@@ -61,6 +63,11 @@ final class LocationService: LocationServicing {
     func setMode(_ mode: LocationMode) {
         preference.mode = mode
         store.save(preference)
+    }
+
+    func reset() {
+        store.clear()
+        preference = LocationPreference()
     }
 
     func selectManual(_ place: Place) {

@@ -13,10 +13,21 @@ enum SpeechEvent: Equatable {
 }
 
 /// Abstraction over speech synthesis so view models are testable and the engine replaceable.
+struct VoiceOption: Identifiable, Hashable {
+    let id: String
+    let name: String
+    /// "Gelişmiş" / "Premium" / "Standart"
+    let qualityName: String
+}
+
 @MainActor
 protocol SpeechServicing: AnyObject {
     var onEvent: ((SpeechEvent) -> Void)? { get set }
     var hasTurkishVoice: Bool { get }
+    /// Installed Turkish voices, best first.
+    func turkishVoices() -> [VoiceOption]
+    /// nil = best installed Turkish voice.
+    func setVoice(_ identifier: String?)
     func speak(_ sentences: [String], rate: Float)
     func pause()
     func resume()
@@ -31,7 +42,7 @@ final class SpeechService: NSObject, SpeechServicing {
 
     private let synthesizer = AVSpeechSynthesizer()
     private var indexByUtterance: [ObjectIdentifier: Int] = [:]
-    private let voice: AVSpeechSynthesisVoice?
+    private var voice: AVSpeechSynthesisVoice?
     private var interruptionObserver: NSObjectProtocol?
 
     static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 0.98
@@ -55,6 +66,25 @@ final class SpeechService: NSObject, SpeechServicing {
     }
 
     var hasTurkishVoice: Bool { voice != nil }
+
+    func turkishVoices() -> [VoiceOption] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == "tr-TR" }
+            .sorted { $0.quality.rawValue > $1.quality.rawValue }
+            .map { v in
+                let quality: String
+                switch v.quality {
+                case .premium: quality = "Premium"
+                case .enhanced: quality = "Gelişmiş"
+                default: quality = "Standart"
+                }
+                return VoiceOption(id: v.identifier, name: v.name, qualityName: quality)
+            }
+    }
+
+    func setVoice(_ identifier: String?) {
+        voice = identifier.flatMap(AVSpeechSynthesisVoice.init(identifier:)) ?? Self.preferredTurkishVoice()
+    }
 
     /// Prefers the highest-quality installed tr-TR voice.
     static func preferredTurkishVoice() -> AVSpeechSynthesisVoice? {

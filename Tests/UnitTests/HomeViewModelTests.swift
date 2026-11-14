@@ -31,6 +31,8 @@ final class HomeViewModelTests: XCTestCase {
         func requestPermission() async { permissionRequests += 1 }
         func setMode(_ mode: LocationMode) { preference.mode = mode }
         func selectManual(_ place: Place) { preference = LocationPreference(mode: .manual, manualPlace: place) }
+        private(set) var resets = 0
+        func reset() { resets += 1; preference = LocationPreference() }
     }
 
     @MainActor
@@ -212,6 +214,59 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertFalse(vm.notifications.preferences.isEnabled)
         XCTAssertEqual(vm.notifications.permission, .denied)
         XCTAssertTrue(scheduler.scheduled.isEmpty)
+    }
+
+    // MARK: - Personalization
+
+    private func makePersonalizedViewModel(speech: PreviewSpeechService, location: StubLocationService) -> HomeViewModel {
+        let suite = "HomeViewModelTests.personalization"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Istanbul")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: 13))!
+        let container = DependencyContainer(speech: speech, speechRecognizer: StubRecognizer(), location: location,
+                                            preferencesStore: UserPreferencesStore(defaults: defaults),
+                                            liveRepository: FixedScenarioRepository(scenario: .rainyAfternoon, now: now),
+                                            now: { now })
+        return HomeViewModel(container: container, defaults: defaults)
+    }
+
+    func testStyleAndSpeedPreferencesApply() async throws {
+        let speech = PreviewSpeechService()
+        let vm = makePersonalizedViewModel(speech: speech, location: StubLocationService(.resolved(MockWeatherData.istanbul)))
+        await vm.onAppear()
+        guard !vm.isMorningBriefing else { return }   // morning greeting has its own wording
+        vm.stop()
+        vm.updatePreferences { $0.style = .playful; $0.speechRateMultiplier = 1.2 }
+        XCTAssertEqual(vm.preferences.style, .playful)
+        XCTAssertEqual(vm.briefing?.sentences.last, "Şemsiyeni unutma, sonra ıslanıp beni suçlama!")
+        vm.playOrReplay()
+        XCTAssertEqual(speech.lastRate, SpeechService.defaultRate * 1.2, accuracy: 0.0001)
+        vm.updatePreferences { $0.voiceIdentifier = "preview.tr" }
+        XCTAssertEqual(speech.selectedVoice, "preview.tr")
+    }
+
+    func testDeleteAllDataResetsEverything() async {
+        let location = StubLocationService(.resolved(MockWeatherData.istanbul))
+        let vm = makePersonalizedViewModel(speech: PreviewSpeechService(), location: location)
+        await vm.onAppear()
+        vm.updatePreferences { $0.style = .calm; $0.subtitleSize = .huge }
+        await vm.conversation.ask("Yarın hava nasıl?")
+        await vm.deleteAllData()
+        XCTAssertEqual(vm.preferences, UserPreferences())
+        XCTAssertEqual(location.resets, 1)
+        XCTAssertTrue(vm.conversation.history.isEmpty)
+        XCTAssertTrue(vm.isSoundOn)
+    }
+
+    func testTappingIdleCharacterReacts() async {
+        let vm = makePersonalizedViewModel(speech: PreviewSpeechService(), location: StubLocationService(.resolved(MockWeatherData.istanbul)))
+        await vm.onAppear()
+        vm.stop()
+        vm.tapCharacter()
+        XCTAssertTrue(vm.isReacting)
+        XCTAssertEqual(vm.appearance.mood, .happy)
     }
 
     // MARK: - MGM official warnings

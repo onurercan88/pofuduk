@@ -35,9 +35,8 @@ struct HomeHeader: View {
             }
             Spacer()
             HStack(spacing: 8) {
-                RoundIconButton(systemImage: viewModel.notifications.preferences.isEnabled ? "bell.badge.fill" : "bell",
-                                label: "Bildirim ayarları") {
-                    viewModel.showNotificationSettings = true
+                RoundIconButton(systemImage: "gearshape.fill", label: "Ayarlar") {
+                    viewModel.showSettings = true
                 }
                 RoundIconButton(systemImage: viewModel.isSoundOn ? "speaker.wave.2.fill" : "speaker.slash.fill",
                                 label: viewModel.isSoundOn ? "Sesi kapat" : "Sesi aç") {

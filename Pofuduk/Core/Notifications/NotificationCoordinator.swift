@@ -79,6 +79,17 @@ final class NotificationCoordinator {
         self.morning = morningStore.load()
     }
 
+    /// "Verilerimi sil": back to defaults, delivery log cleared, all pending notifications cancelled.
+    func reset() async {
+        preferences = NotificationPreferences()
+        morning = MorningBriefingSettings()
+        store.save(preferences)
+        morningStore.save(morning)
+        log.prune(before: .distantFuture)
+        lastSnapshot = nil
+        await replan()
+    }
+
     // MARK: - Morning briefing
 
     func shouldGreet(timeZone: TimeZone) -> Bool {

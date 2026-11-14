@@ -12,14 +12,17 @@ final class DependencyContainer {
     let personality: CharacterPersonalityEngine
     let now: () -> Date
     let notifications: NotificationCoordinator
+    let preferencesStore: UserPreferencesStore
     /// Non-nil = start in clearly labelled demo mode (previews, tests, CI screenshots).
     let initialDemoScenario: MockWeatherData.Scenario?
     private let liveRepository: WeatherRepository
+    private let cacheStore: WeatherCacheStore
 
     init(speech: SpeechServicing? = nil,
          speechRecognizer: SpeechRecognizing? = nil,
          location: LocationServicing? = nil,
          notifications: NotificationCoordinator? = nil,
+         preferencesStore: UserPreferencesStore? = nil,
          alertRepository: WeatherAlertRepository? = nil,
          summaryEngine: WeatherSummaryEngine = WeatherSummaryEngine(),
          personality: CharacterPersonalityEngine = CharacterPersonalityEngine(),
@@ -39,7 +42,12 @@ final class DependencyContainer {
         self.personality = personality
         self.initialDemoScenario = initialDemoScenario
         self.now = now
-        self.liveRepository = liveRepository ?? Self.makeLiveRepository(keychain: keychain, http: http)
+        let cache: WeatherCacheStore = liveRepository == nil
+            ? FileWeatherCacheStore(directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Weather"))
+            : InMemoryWeatherCacheStore()
+        self.cacheStore = cache
+        self.liveRepository = liveRepository ?? Self.makeLiveRepository(keychain: keychain, http: http, cache: cache)
+        self.preferencesStore = preferencesStore ?? UserPreferencesStore()
         self.notifications = notifications ?? NotificationCoordinator(
             scheduler: UserNotificationService(), store: NotificationPreferenceStore(),
             morningStore: MorningBriefingStore(), log: UserDefaultsNotificationLog(), now: now)
@@ -71,15 +79,24 @@ final class DependencyContainer {
     }
 
     /// WeatherAPI first (commercial use allowed on free plan) when a key is configured; Open-Meteo as fallback.
-    private static func makeLiveRepository(keychain: KeychainSecretStore, http: HTTPClient) -> WeatherRepository {
+    private static func makeLiveRepository(keychain: KeychainSecretStore, http: HTTPClient, cache: WeatherCacheStore) -> WeatherRepository {
         var providers: [WeatherProvider] = []
         if keychain.value(for: KeychainSecretStore.weatherAPIKey) != nil {
             providers.append(WeatherAPIProvider(http: http, apiKey: { keychain.value(for: KeychainSecretStore.weatherAPIKey) }))
         }
         providers.append(OpenMeteoProvider(http: http))
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Weather")
-        return CachedWeatherRepository(engine: WeatherProviderFallbackEngine(providers: providers),
-                                       cache: FileWeatherCacheStore(directory: cacheDir))
+        return CachedWeatherRepository(engine: WeatherProviderFallbackEngine(providers: providers), cache: cache)
+    }
+
+    /// "Verilerimi sil": cached forecasts, location choice and last place, notification + morning settings
+    /// and delivery log (pending notifications cancelled), personalization and sound preference.
+    /// The developer API key in the Keychain is not user data and is kept.
+    func deleteAllData() async {
+        await cacheStore.removeAll()
+        location.reset()
+        await notifications.reset()
+        preferencesStore.clear()
+        UserDefaults.standard.removeObject(forKey: "pofuduk.soundOn")
     }
 
     /// Authorized MGM CAP feed URL from Info.plist (`MGMWarningFeedURL`). Empty until MGM grants written
