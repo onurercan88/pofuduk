@@ -9,6 +9,17 @@ scripts\swift-core.cmd test
 The script loads the MSVC x64 environment (`vcvars64.bat`) and `SDKROOT`, which `swift` needs on Windows.
 Requires the Swift toolchain (`winget install Swift.Toolchain`) plus Visual Studio 2022 with the MSVC x64 tools and the Windows 11 SDK.
 
+## Console demo (Windows, live data)
+Pofuduk's engines in a terminal, with real Open-Meteo data. No Mac or iPhone needed.
+```
+scripts\pofuduk.cmd Ankara
+scripts\pofuduk.cmd İzmir --stil sakaci --ses
+scripts\pofuduk.cmd Bursa --soru "yarin yagmur var mi"
+```
+- Shows: current weather, the briefing (the morning greeting between 07:30 and noon), the 12-hour forecast, "Bugün Ne Giysem?", the notifications that would be planned, and the MGM status. Then you can ask questions until you type `çık`.
+- `--ses` reads answers aloud with the Windows Turkish voice "Microsoft Tolga" (`scripts\speak.ps1`). `--kisa` gives the short briefing. `--stil samimi|sakaci|sakin` picks the tone.
+- Questions can be typed without Turkish letters ("yarin hava nasil").
+
 ## macOS (required for the iOS app)
 1. Xcode 15+ (iOS 17 SDK), and `brew install xcodegen`.
 2. `xcodegen generate` in the repo root → `Pofuduk.xcodeproj`.
