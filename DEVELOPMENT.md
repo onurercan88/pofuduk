@@ -15,6 +15,9 @@ Requires the Swift toolchain (`winget install Swift.Toolchain`) plus Visual Stud
 3. Open it and run the `Pofuduk` scheme on an iPhone simulator.
 4. Tests: `xcodebuild test -scheme Pofuduk -destination 'platform=iOS Simulator,name=iPhone 15'`, and `swift test` in `PofudukCore`.
 
+## CI screenshots
+Each CI run uploads a `screenshots` artifact with every demo scenario. Download it with `gh run download <run-id> -n screenshots`. Locally, the launch argument `-pofuduk.demoScenario <sunny|rainyAfternoon|stormy|snowy|cloudy|windy>` picks the scenario.
+
 ## Configuration
 - No API keys yet (demo data only). Phase 3 adds `Config/Secrets.xcconfig` (gitignored) and a Keychain-based key store. Keys never go into source.
 - Turkish TTS needs a tr-TR voice. Simulator: Settings › Accessibility › Spoken Content › Voices › Türkçe.

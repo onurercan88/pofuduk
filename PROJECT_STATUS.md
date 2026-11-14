@@ -23,8 +23,9 @@ _Last updated: 2026-11-14_
 - [x] `SpeechService` (AVSpeechSynthesizer, one utterance per sentence, interruption pause)
 - [x] App unit tests (6, HomeViewModel) + UI smoke test (1) — pass in CI on an iOS simulator
 - [x] Compile on Xcode 26.6 (CI)
-- [ ] Visual review of the screen (no screenshots yet)
-- [ ] Turkish speech heard on a real device (CI simulator has no audio check)
+- [x] Visual review: CI saves screenshots of 6 scenarios in light mode and 3 in dark mode (artifact `screenshots`). Fixed the overlapping outlines in the cloud body and the scarf position.
+- [x] Turkish TTS confirmed on the CI simulator: the highlighted word moves forward from the real `willSpeakRange` callbacks.
+- [ ] Turkish speech listened to on a real device
 - [ ] App icon artwork
 
 ### Phase 3+ — not started
