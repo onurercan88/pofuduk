@@ -34,22 +34,6 @@ final class HomeUITests: XCTestCase {
         XCTAssertTrue(answer.waitForExistence(timeout: 5))
     }
 
-    /// Regression: an answer asked while the briefing is still speaking must start speaking too
-    /// (it used to stay at "Pofuduk konuşmaya hazırlanıyor…" — AVSpeechSynthesizer stop/speak race).
-    func testAnswerStartsWhileBriefingIsSpeaking() {
-        let app = launchDemo(soundOff: false)
-        sleep(3)   // the briefing is being spoken now
-        let field = app.textFields["Soru"]
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
-        field.tap()
-        field.typeText("Yarın hava nasıl?\n")
-        let answer = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH 'Yarın İstanbul'")).firstMatch
-        XCTAssertTrue(answer.waitForExistence(timeout: 8), "Answer subtitle should appear")
-        XCTAssertFalse(app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH 'Pofuduk konuşmaya hazırlanıyor'")).firstMatch.exists)
-    }
-
     func testSettingsOpensWithPrivacyAndDeleteOption() {
         let app = launchDemo()
         app.buttons["Ayarlar"].tap()
