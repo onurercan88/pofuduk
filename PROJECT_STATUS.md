@@ -5,7 +5,7 @@ _Last updated: 2026-11-15_
 ## Environment
 - Dev machine: Windows 11, no Xcode. Swift 6.4.2 → `PofudukCore` builds and tests here (`scripts\swift-core.cmd test`); console demo with live data via `.\scripts\pofuduk.cmd Ankara --ses` (Turkish voice "Microsoft Tolga").
 - Repo `onurercan88/pofuduk` is **public** (since 2026-11-15; free CI). GitHub Actions (`macos-latest`, Xcode 26.6) builds and tests the app on every push except `.md`-only ones. It also takes screenshots and records the guided tour video (artifact `screenshots`).
-- TestFlight: `.github/workflows/testflight.yml` (manual run) is ready. ⏳ It waits for the Apple Developer Program membership, then the secrets (DEVICE_TESTING.md, Yol B).
+- TestFlight: `.github/workflows/testflight.yml` (manual run) ✅ works. Membership active (individual), App ID `com.pofuduk.app`, App Store Connect app "Pofuduk: Konuşan Hava Durumu", secrets set. Archive is unsigned; export signs for App Store (no registered device needed). First build 0.1.0 (2) uploaded 2026-11-15.
 
 ## Phase checklist
 ### Phase 1 — Architecture ✅
@@ -134,7 +134,8 @@ _Last updated: 2026-11-15_
 - [x] Bug fixed: an answer asked while the briefing was speaking stayed at "hazırlanıyor" (AVSpeechSynthesizer drops utterances queued during `stopSpeaking`). Now `speak()` waits up to ~1 s for the stop to complete. Covered by fast `SpeechServiceTests` (real synthesizer; started and finished events). The tour video confirms it.
 - [x] Reduce Motion / still renders freeze with open eyes
 - [x] Docs: DEVICE_TESTING.md (iPhone test guide, TestFlight setup), Open-Meteo and MGM request drafts (API_INTEGRATIONS.md)
-- [ ] TestFlight run and real-iPhone test list (DEVICE_TESTING.md), blocked on Apple membership approval
+- [x] TestFlight upload (build 0.1.0 (2))
+- [ ] Real-iPhone test list (DEVICE_TESTING.md): add internal tester, install via TestFlight app
 
 ## Known limitations
 - MGM: no authorized machine-readable source → the app shows "unavailable" + the official page (https://www.mgm.gov.tr/meteouyari/turkiye.aspx, verified).
