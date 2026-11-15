@@ -40,7 +40,11 @@ protocol SpeechServicing: AnyObject {
 final class SpeechService: NSObject, SpeechServicing {
     var onEvent: ((SpeechEvent) -> Void)?
 
-    private let synthesizer = AVSpeechSynthesizer()
+    /// Replaced by a fresh instance whenever speech is interrupted: utterances queued on a synthesizer
+    /// whose `stopSpeaking(at: .immediate)` is still in progress can be silently dropped
+    /// (answers stuck at "hazırlanıyor" — seen in the CI tour recording).
+    private var synthesizer = AVSpeechSynthesizer()
+    private var needsFreshSynthesizer = false
     private var indexByUtterance: [ObjectIdentifier: Int] = [:]
     private var voice: AVSpeechSynthesisVoice?
     private var interruptionObserver: NSObjectProtocol?
@@ -94,6 +98,13 @@ final class SpeechService: NSObject, SpeechServicing {
 
     func speak(_ sentences: [String], rate: Float = SpeechService.defaultRate) {
         stop()
+        if needsFreshSynthesizer {
+            // Don't queue onto the synthesizer that is still cancelling; its late callbacks are ignored.
+            synthesizer.delegate = nil
+            synthesizer = AVSpeechSynthesizer()
+            synthesizer.delegate = self
+            needsFreshSynthesizer = false
+        }
         guard let voice else {
             onEvent?(.voiceUnavailable)
             return
@@ -123,8 +134,9 @@ final class SpeechService: NSObject, SpeechServicing {
     func stop() {
         let wasActive = !indexByUtterance.isEmpty
         indexByUtterance.removeAll()
-        if synthesizer.isSpeaking || synthesizer.isPaused {
+        if synthesizer.isSpeaking || synthesizer.isPaused || wasActive {
             synthesizer.stopSpeaking(at: .immediate)
+            needsFreshSynthesizer = true
         }
         if wasActive { onEvent?(.cancelled) }
     }
@@ -170,11 +182,19 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didPause utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.onEvent?(.paused) }
+        let source = ObjectIdentifier(s)
+        Task { @MainActor in
+            guard source == ObjectIdentifier(self.synthesizer) else { return }   // from a discarded synthesizer
+            self.onEvent?(.paused)
+        }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didContinue utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.onEvent?(.resumed) }
+        let source = ObjectIdentifier(s)
+        Task { @MainActor in
+            guard source == ObjectIdentifier(self.synthesizer) else { return }
+            self.onEvent?(.resumed)
+        }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
