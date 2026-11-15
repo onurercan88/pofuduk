@@ -57,6 +57,8 @@ final class SpeechServiceTests: XCTestCase {
         service.speak(["Kısa cevap."], rate: SpeechService.defaultRate)   // no explicit stop
         let answerStarted = await waitFor(5) { events.contains(.started(sentence: 0)) }
         XCTAssertTrue(answerStarted)
+        let answerFinished = await waitFor(8) { events.contains(.finished(sentence: 0)) }
+        XCTAssertTrue(answerFinished, "The answer must play to the end (audio not stalled)")
         XCTAssertFalse(events.contains(.started(sentence: 1)), "Old briefing sentences must not continue")
         service.stop()
     }

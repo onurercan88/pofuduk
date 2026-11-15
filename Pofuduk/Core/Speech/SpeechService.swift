@@ -40,11 +40,12 @@ protocol SpeechServicing: AnyObject {
 final class SpeechService: NSObject, SpeechServicing {
     var onEvent: ((SpeechEvent) -> Void)?
 
-    /// Replaced by a fresh instance whenever speech is interrupted: utterances queued on a synthesizer
-    /// whose `stopSpeaking(at: .immediate)` is still in progress can be silently dropped
-    /// (answers stuck at "hazırlanıyor" — seen in the CI tour recording).
-    private var synthesizer = AVSpeechSynthesizer()
-    private var needsFreshSynthesizer = false
+    private let synthesizer = AVSpeechSynthesizer()
+    /// Set by `stop()`; the next `speak()` waits until the stop has really completed. Utterances queued
+    /// while `stopSpeaking(at: .immediate)` is still in progress can be silently dropped (answers stuck at
+    /// "hazırlanıyor" — seen in the CI tour recording). Replacing the synthesizer instead left audio stalled.
+    private var stopInProgress = false
+    private var pendingSpeak: Task<Void, Never>?
     private var indexByUtterance: [ObjectIdentifier: Int] = [:]
     private var voice: AVSpeechSynthesisVoice?
     private var interruptionObserver: NSObjectProtocol?
@@ -98,26 +99,35 @@ final class SpeechService: NSObject, SpeechServicing {
 
     func speak(_ sentences: [String], rate: Float = SpeechService.defaultRate) {
         stop()
-        if needsFreshSynthesizer {
-            // Don't queue onto the synthesizer that is still cancelling; its late callbacks are ignored.
-            synthesizer.delegate = nil
-            synthesizer = AVSpeechSynthesizer()
-            synthesizer.delegate = self
-            needsFreshSynthesizer = false
-        }
         guard let voice else {
             onEvent?(.voiceUnavailable)
             return
         }
-        activateAudioSession()
-        for (index, sentence) in sentences.enumerated() {
+        let utterances = sentences.enumerated().map { index, sentence -> AVSpeechUtterance in
             let utterance = AVSpeechUtterance(string: sentence)
             utterance.voice = voice
             utterance.rate = rate
             utterance.pitchMultiplier = 1.12
             utterance.postUtteranceDelay = 0.22
             indexByUtterance[ObjectIdentifier(utterance)] = index
-            synthesizer.speak(utterance)
+            return utterance
+        }
+        let mustWait = stopInProgress
+        stopInProgress = false
+        pendingSpeak = Task { [weak self] in
+            guard let self else { return }
+            if mustWait {
+                // Let the interrupted speech finish cancelling (max ~1 s) before queueing new utterances.
+                try? await Task.sleep(for: .milliseconds(100))
+                var waited = 0
+                while self.synthesizer.isSpeaking && waited < 45 {
+                    try? await Task.sleep(for: .milliseconds(20))
+                    waited += 1
+                }
+            }
+            guard !Task.isCancelled else { return }
+            self.activateAudioSession()
+            utterances.forEach { self.synthesizer.speak($0) }
         }
     }
 
@@ -134,9 +144,11 @@ final class SpeechService: NSObject, SpeechServicing {
     func stop() {
         let wasActive = !indexByUtterance.isEmpty
         indexByUtterance.removeAll()
-        if synthesizer.isSpeaking || synthesizer.isPaused || wasActive {
+        pendingSpeak?.cancel()   // an answer still waiting to be queued is dropped too
+        pendingSpeak = nil
+        if synthesizer.isSpeaking || synthesizer.isPaused {
             synthesizer.stopSpeaking(at: .immediate)
-            needsFreshSynthesizer = true
+            stopInProgress = true
         }
         if wasActive { onEvent?(.cancelled) }
     }
@@ -182,19 +194,11 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didPause utterance: AVSpeechUtterance) {
-        let source = ObjectIdentifier(s)
-        Task { @MainActor in
-            guard source == ObjectIdentifier(self.synthesizer) else { return }   // from a discarded synthesizer
-            self.onEvent?(.paused)
-        }
+        Task { @MainActor in self.onEvent?(.paused) }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didContinue utterance: AVSpeechUtterance) {
-        let source = ObjectIdentifier(s)
-        Task { @MainActor in
-            guard source == ObjectIdentifier(self.synthesizer) else { return }
-            self.onEvent?(.resumed)
-        }
+        Task { @MainActor in self.onEvent?(.resumed) }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
