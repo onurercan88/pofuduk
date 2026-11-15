@@ -12,7 +12,8 @@ Read only the relevant sections of these docs; never copy them here.
 
 ## Build (Windows dev machine)
 - Core logic: `scripts\swift-core.cmd build` / `scripts\swift-core.cmd test` (sets up MSVC + Swift env).
-- iOS app (`Pofuduk/`, `project.yml`) cannot compile on Windows. It is verified by GitHub Actions on push to `onurercan88/pofuduk` (private; macOS minutes cost 10x, so pushes that only change `.md` files are skipped).
+- iOS app (`Pofuduk/`, `project.yml`) cannot compile on Windows. It is verified by GitHub Actions on push to `onurercan88/pofuduk` (public repo, free CI; pushes that only change `.md` files are skipped, add `[skip ci]` for other non-code commits).
+- Live-data console demo: `.\scripts\pofuduk.cmd Ankara --ses`.
 - `gh`/`git` push only work in the user's terminal tabs (the sandboxed shell can't read the GitHub credentials).
 - Put new business logic in `PofudukCore` so it stays testable here.
 

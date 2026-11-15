@@ -1,10 +1,11 @@
 # Pofuduk — Project Status
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-15_
 
 ## Environment
-- Dev machine: Windows 11, no Xcode. Swift 6.4.2 toolchain installed → only `PofudukCore` can be built and tested here (`scripts\swift-core.cmd test`).
-- iOS app is built and tested by GitHub Actions (`macos-latest`, Xcode 26.6) on every push to the private repo `onurercan88/pofuduk`. Pushes that only change `.md` files are skipped.
+- Dev machine: Windows 11, no Xcode. Swift 6.4.2 → `PofudukCore` builds and tests here (`scripts\swift-core.cmd test`); console demo with live data via `.\scripts\pofuduk.cmd Ankara --ses` (Turkish voice "Microsoft Tolga").
+- Repo `onurercan88/pofuduk` is **public** (since 2026-11-15; free CI). GitHub Actions (`macos-latest`, Xcode 26.6) builds and tests the app on every push except `.md`-only ones. It also takes screenshots and records the guided tour video (artifact `screenshots`).
+- TestFlight: `.github/workflows/testflight.yml` (manual run) is ready. ⏳ It waits for the Apple Developer Program membership, then the secrets (DEVICE_TESTING.md, Yol B).
 
 ## Phase checklist
 ### Phase 1 — Architecture ✅
@@ -12,7 +13,7 @@ _Last updated: 2026-11-14_
 - [x] Core models (weather, place, alerts, character, briefing) + provider protocols
 - [x] Environment inspection
 
-### Phase 2 — Visual MVP 🟡 (builds + tests pass in CI; visuals not yet reviewed)
+### Phase 2 — Visual MVP ✅ (visuals reviewed via CI screenshots + tour video)
 - [x] `WeatherSummaryEngine` (thresholds, rain likely/possible, intensity from amounts only, wind, UV, swing, stale) — tested
 - [x] `CharacterPersonalityEngine` (friendly/playful/calm, warnings first, serious mode, demo/stale disclosure) — tested
 - [x] `SubtitleTrack` + `SentenceSegmenter` — tested
@@ -126,9 +127,17 @@ _Last updated: 2026-11-14_
 - [x] App icon rendered from the character in CI (opaque 1024 px) and added to the asset catalog
 - [x] README.md, RELEASE_CHECKLIST.md, APP_STORE_METADATA.md (Turkish metadata, keywords, privacy label, screenshot plan)
 - [ ] Before release (see RELEASE_CHECKLIST.md): confirm with Open-Meteo that a free, ad-free release counts as non-commercial; Apple developer account/signing; real-device checks; MGM permission (optional; the app works with the official link meanwhile); WeatherAPI only with the backend proxy
-See ROADMAP.md.
+
+### After Phase 12 (2026-11-15)
+- [x] Windows console demo (`PofudukDemo` + `scripts\pofuduk.cmd`): live Open-Meteo briefing, clothing, notification plan, Q&A, `--ses` with Tolga
+- [x] CI guided tour recording (`DemoTourUITests`, skipped in normal runs; step capped at 15 min, non-blocking)
+- [x] Bug fixed: an answer asked while the briefing was speaking stayed at "hazırlanıyor" (AVSpeechSynthesizer drops utterances queued during `stopSpeaking`). Now `speak()` waits up to ~1 s for the stop to complete. Covered by fast `SpeechServiceTests` (real synthesizer; started and finished events). The tour video confirms it.
+- [x] Reduce Motion / still renders freeze with open eyes
+- [x] Docs: DEVICE_TESTING.md (iPhone test guide, TestFlight setup), Open-Meteo and MGM request drafts (API_INTEGRATIONS.md)
+- [ ] TestFlight run and real-iPhone test list (DEVICE_TESTING.md), blocked on Apple membership approval
 
 ## Known limitations
-- MGM: no authorized machine-readable source yet → the app shows "unavailable" + an official link. The exact warning-page URL still needs checking.
-- Provider licences (WeatherAPI, Open-Meteo commercial use) not yet validated.
-- Turkish TTS needs a tr-TR voice installed on the device or simulator. Without one, subtitles are shown instead.
+- MGM: no authorized machine-readable source → the app shows "unavailable" + the official page (https://www.mgm.gov.tr/meteouyari/turkiye.aspx, verified).
+- Licences: WeatherAPI terms were checked (commercial OK on the free plan). Open-Meteo's free API is non-commercial, so a confirmation email is pending.
+- Turkish TTS needs a tr-TR voice on the device or simulator. Without one, subtitles are shown instead.
+- UI tests run slowly while the app is speaking (XCUITest waits for an idle app), so speech is covered by unit-level tests instead.
