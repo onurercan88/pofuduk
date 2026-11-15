@@ -69,6 +69,9 @@ jobs:
           xcrun simctl spawn "$SIM_ID" log show --last 5m --style compact --predicate 'subsystem == "com.pofuduk.app"' | tail -n 20 || true
           ls -la screenshots
       - name: Screen recording (guided tour, no audio)
+        # Best effort: never blocks the run, never runs longer than 15 minutes.
+        timeout-minutes: 15
+        continue-on-error: true
         run: |
           xcrun simctl ui "$SIM_ID" appearance light
           xcrun simctl io "$SIM_ID" recordVideo --codec=h264 --force screenshots/pofuduk-tour.mp4 &
