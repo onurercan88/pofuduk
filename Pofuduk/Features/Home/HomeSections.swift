@@ -18,14 +18,15 @@ struct HomeHeader: View {
                     .buttonStyle(.plain)
                     .accessibilityHint(viewModel.isDemoMode ? "" : "Konumu değiştir")
                     TimelineView(.everyMinute) { context in
-                        Text("\(TurkishFormatting.longDate(context.date, timeZone: place.timeZone)) · \(TurkishFormatting.clockTime(context.date, timeZone: place.timeZone))")
+                        let date = viewModel.headerDate(context.date)
+                        Text("\(TurkishFormatting.longDate(date, timeZone: place.timeZone)) · \(TurkishFormatting.clockTime(date, timeZone: place.timeZone))")
                             .font(PofudukFont.caption)
                             .foregroundStyle(PofudukColor.inkSecondary)
                     }
                 } else {
                     Text("Pofuduk").font(PofudukFont.title).foregroundStyle(PofudukColor.ink)
                 }
-                if viewModel.isDemo {
+                if viewModel.isDemo && !viewModel.hidesDemoChrome {
                     Badge(text: "Örnek veri — gerçek tahmin değil", systemImage: "info.circle")
                         .padding(.top, 4)
                 }

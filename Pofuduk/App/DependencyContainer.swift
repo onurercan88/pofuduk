@@ -16,6 +16,8 @@ final class DependencyContainer {
     /// Non-nil = start in clearly labelled demo mode (previews, tests, CI screenshots).
     let initialDemoScenario: MockWeatherData.Scenario?
     private let liveRepository: WeatherRepository
+    /// DEBUG screenshots only: the header shows `now()` instead of the wall clock.
+    private(set) var isClockFixed = false
     private let cacheStore: WeatherCacheStore
 
     init(speech: SpeechServicing? = nil,
@@ -75,7 +77,21 @@ final class DependencyContainer {
         }
         #endif
         let raw = defaults.string(forKey: "pofuduk.demoScenario")
-        return DependencyContainer(initialDemoScenario: raw.flatMap(MockWeatherData.Scenario.init(rawValue:)))
+        let scenario = raw.flatMap(MockWeatherData.Scenario.init(rawValue:))
+        #if DEBUG
+        // Store screenshots: `-pofuduk.fixedHour 11` freezes the demo clock at today 11:00 Istanbul time,
+        // so a sunny scene never turns into night just because CI runs in the evening.
+        if scenario != nil, let hour = defaults.string(forKey: "pofuduk.fixedHour").flatMap(Int.init) {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = MockWeatherData.istanbul.timeZone
+            if let fixed = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) {
+                let container = DependencyContainer(initialDemoScenario: scenario, now: { fixed })
+                container.isClockFixed = true
+                return container
+            }
+        }
+        #endif
+        return DependencyContainer(initialDemoScenario: scenario)
     }
 
     /// Apple Weather (WeatherKit) first; WeatherAPI when a key is configured; Open-Meteo as last fallback.

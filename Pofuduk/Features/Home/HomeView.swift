@@ -66,7 +66,7 @@ struct HomeView: View {
                         RetryCard(reason: reason) { Task { await viewModel.retry() } }
                     }
 
-                    if let scenario = viewModel.demoScenario {
+                    if let scenario = viewModel.demoScenario, !viewModel.hidesDemoChrome {
                         DemoScenarioPicker(selected: scenario) { scenario in
                             Task { await viewModel.selectScenario(scenario) }
                         }

@@ -1,0 +1,62 @@
+name: Store screenshots
+# Manual only: App Store screenshots on the largest iPhone simulator (6.9").
+# Demo data with the demo badge/picker hidden (`-pofuduk.storeScreenshots`, DEBUG builds only) and a
+# fixed demo clock (`-pofuduk.fixedHour`). Each scene is shot muted (last sentence shown) and while speaking.
+on:
+  workflow_dispatch:
+
+jobs:
+  shots:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: brew install xcodegen && xcodegen generate
+      - name: Pick the largest iPhone simulator
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "
+          import json, re, sys
+          devs = [x for k, v in json.load(sys.stdin)['devices'].items() if 'iOS' in k for x in v]
+          pro_max = [x for x in devs if x['name'].startswith('iPhone') and 'Pro Max' in x['name']]
+          key = lambda x: int((re.findall(r'\d+', x['name']) or ['0'])[0])
+          best = max(pro_max, key=key)
+          print(best['udid'] + ' ' + best['name'].replace(' ', '_'))")
+          echo "SIM_ID=${SIM%% *}" >> "$GITHUB_ENV"
+          echo "Simulator: ${SIM#* }"
+      - name: Build (Debug, simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
+            -destination "id=$SIM_ID" CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "error:|\*\* BUILD" | head -n 50
+      - name: Shoot
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/Pofuduk.app
+          xcrun simctl boot "$SIM_ID" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_ID" -b
+          xcrun simctl status_bar "$SIM_ID" override --time 9:41 --batteryLevel 100 --batteryState charged --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$SIM_ID" "$APP"
+          mkdir -p store
+          shoot() { # name scenario hour appearance extra-args...
+            local name=$1 scenario=$2 hour=$3 look=$4; shift 4
+            xcrun simctl ui "$SIM_ID" appearance "$look"
+            for mode in muted speaking; do
+              local sound=YES; [ "$mode" = muted ] && sound=NO
+              xcrun simctl terminate "$SIM_ID" com.pofuduk.app 2>/dev/null || true
+              xcrun simctl launch "$SIM_ID" com.pofuduk.app -pofuduk.demoScenario "$scenario" \
+                -pofuduk.storeScreenshots YES -pofuduk.fixedHour "$hour" -pofuduk.soundOn "$sound" "$@"
+              sleep 11
+              xcrun simctl io "$SIM_ID" screenshot "store/$name-$mode.png"
+            done
+          }
+          shoot 1-sunny sunny 11 light
+          shoot 2-rainy rainyAfternoon 15 light
+          shoot 3-clothing rainyAfternoon 15 light -pofuduk.openClothing YES
+          shoot 4-windy windy 12 light
+          shoot 5-snowy snowy 10 light
+          shoot 6-stormy-dark stormy 15 dark
+          sips -g pixelWidth -g pixelHeight store/1-sunny-muted.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-screenshots
+          path: store/
+          retention-days: 30

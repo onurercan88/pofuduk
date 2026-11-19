@@ -197,6 +197,17 @@ final class HomeViewModel {
 
     var isDemo: Bool { snapshot?.source == .demo }
     var isDemoMode: Bool { demoScenario != nil }
+    /// Header clock: the wall clock, unless a DEBUG screenshot run froze the container clock.
+    func headerDate(_ wallClock: Date) -> Date { container.isClockFixed ? container.now() : wallClock }
+    /// App Store screenshots only (DEBUG launch argument `-pofuduk.storeScreenshots YES`): hides the demo
+    /// badge and scenario picker. Release builds always show them.
+    var hidesDemoChrome: Bool {
+        #if DEBUG
+        return isDemoMode && defaults.bool(forKey: "pofuduk.storeScreenshots")
+        #else
+        return false
+        #endif
+    }
     var isFailed: Bool { failureReason != nil }
     var failureReason: String? { if case .failed(let reason) = loadState { return reason } else { return nil } }
     var isStale: Bool { analysis?.isStale ?? false }
