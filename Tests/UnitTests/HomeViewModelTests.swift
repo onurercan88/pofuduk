@@ -449,6 +449,28 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(speech.spokenSentences, vm.briefing?.sentences, "Subtitles must equal spoken text")
     }
 
+    func testRefreshSpeaksUpdatedBriefing() async {
+        let speech = PreviewSpeechService()
+        let vm = makeViewModel(speech: speech)
+        await vm.onAppear()
+        vm.stop()
+        await vm.refresh()
+        XCTAssertEqual(vm.track.status, .speaking, "Pull to refresh must not leave the bubble at 'hazırlanıyor'")
+        XCTAssertEqual(speech.spokenSentences, vm.briefing?.sentences)
+    }
+
+    func testSpeechThatNeverStartsFallsBackToText() async throws {
+        let speech = PreviewSpeechService()
+        speech.dropsUtterances = true
+        let vm = makeViewModel(speech: speech)
+        vm.speechStartTimeout = .milliseconds(50)
+        await vm.onAppear()
+        XCTAssertEqual(vm.track.status, .idle)
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(vm.track.status, .finished)
+        XCTAssertNotNil(vm.track.currentSentence, "Text is shown instead of the endless 'hazırlanıyor'")
+    }
+
     func testPauseResumeStop() async {
         let speech = PreviewSpeechService()
         let vm = makeViewModel(speech: speech)

@@ -28,6 +28,10 @@ final class HomeViewModel {
     private(set) var analysis: WeatherAnalysis?
     private(set) var briefing: Briefing?
     private(set) var track = SubtitleTrack()
+    /// If speech hasn't started by then (synthesizer dropped the utterances), show the text instead of
+    /// leaving "Pofuduk konuşmaya hazırlanıyor…" on screen forever.
+    var speechStartTimeout: Duration = .seconds(4)
+    @ObservationIgnored private var speechStartWatchdog: Task<Void, Never>?
     private(set) var warningAvailability: WarningAvailability?
     private(set) var isWaking = false
     private(set) var voiceMissing = false
@@ -223,8 +227,9 @@ final class HomeViewModel {
         #endif
     }
 
+    /// Pull to refresh is an explicit request → Pofuduk tells the updated weather (text only when muted).
     func refresh() async {
-        await load(autoSpeak: false, greetSleepily: false, forceRefresh: true)
+        await load(autoSpeak: true, greetSleepily: false, forceRefresh: true)
     }
 
     func retry() async {
@@ -282,9 +287,22 @@ final class HomeViewModel {
         track.load(briefing.sentences)
         if isSoundOn, container.speech.hasTurkishVoice {
             container.speech.speak(briefing.sentences, rate: speechRate)
+            startSpeechWatchdog()
         } else {
             voiceMissing = !container.speech.hasTurkishVoice
             track.showAllWithoutAudio()
+        }
+    }
+
+    private func startSpeechWatchdog() {
+        speechStartWatchdog?.cancel()
+        let sentences = track.sentences
+        let timeout = speechStartTimeout
+        speechStartWatchdog = Task { [weak self] in
+            try? await Task.sleep(for: timeout)
+            guard let self, !Task.isCancelled, self.track.status == .idle, self.track.sentences == sentences else { return }
+            self.container.speech.stop()
+            self.track.showAllWithoutAudio()
         }
     }
 

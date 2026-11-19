@@ -11,6 +11,8 @@ final class PreviewSpeechService: SpeechServicing {
     private(set) var isPaused = false
     /// When false, `speak` only starts the first sentence (lets tests inspect mid-speech state).
     var autoFinish: Bool
+    /// Simulates the synthesizer silently dropping queued utterances (no events at all).
+    var dropsUtterances = false
 
     init(hasTurkishVoice: Bool = true, autoFinish: Bool = false) {
         self.hasTurkishVoice = hasTurkishVoice
@@ -30,7 +32,7 @@ final class PreviewSpeechService: SpeechServicing {
         lastRate = rate
         stop()
         spokenSentences = sentences
-        guard !sentences.isEmpty else { return }
+        guard !sentences.isEmpty, !dropsUtterances else { return }
         onEvent?(.started(sentence: 0))
         guard autoFinish else { return }
         for i in sentences.indices {
