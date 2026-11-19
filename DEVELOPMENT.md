@@ -30,6 +30,9 @@ Pofuduk's engines in a terminal, with real Open-Meteo data. No Mac or iPhone nee
 ## CI screenshots
 Each CI run uploads a `screenshots` artifact with every demo scenario. Download it with `gh run download <run-id> -n screenshots`. Locally, the launch argument `-pofuduk.demoScenario <sunny|rainyAfternoon|stormy|snowy|cloudy|windy>` picks the scenario.
 
+## Speech tests (real synthesizer on the CI simulator)
+`SpeechServiceTests` failures are real stalls, not simulator slowness: a short answer finishes in ~1 s there, and `.finished` gets 8 s *after* `.started`. Don't raise budgets or add retries; read the timeline/`debugState` printed in the assertion message. Stop completion is signalled by the interrupted utterance's cancel callback (not `isSpeaking`), and an unexpected cancel of a current sentence is reported as `.cancelled`.
+
 ## Configuration
 - No API keys yet (demo data only). Phase 3 adds `Config/Secrets.xcconfig` (gitignored) and a Keychain-based key store. Keys never go into source.
 - Turkish TTS needs a tr-TR voice. Simulator: Settings › Accessibility › Spoken Content › Voices › Türkçe.

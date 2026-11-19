@@ -44,9 +44,15 @@ final class SpeechService: NSObject, SpeechServicing {
     /// Set by `stop()`; the next `speak()` waits until the stop has really completed. Utterances queued
     /// while `stopSpeaking(at: .immediate)` is still in progress can be silently dropped (answers stuck at
     /// "hazırlanıyor" — seen in the CI tour recording). Replacing the synthesizer instead left audio stalled.
+    /// Cleared by the interrupted utterance's cancel/finish callback — the synthesizer's own "stop done"
+    /// signal — rather than by polling `isSpeaking` after a fixed 100 ms.
     private var stopInProgress = false
     private var pendingSpeak: Task<Void, Never>?
-    private var indexByUtterance: [ObjectIdentifier: Int] = [:]
+    /// Sentences of the current `speak()` that have not finished yet. The utterances are held strongly and
+    /// every delegate callback keeps its own utterance alive until handled, so a late callback of an
+    /// interrupted utterance can never alias a new one at a reused address (it did when only the
+    /// `ObjectIdentifier` was captured).
+    private var pending: [ObjectIdentifier: (utterance: AVSpeechUtterance, index: Int)] = [:]
     private var voice: AVSpeechSynthesisVoice?
     private var interruptionObserver: NSObjectProtocol?
 
@@ -111,26 +117,33 @@ final class SpeechService: NSObject, SpeechServicing {
             utterance.rate = rate
             utterance.pitchMultiplier = 1.12
             utterance.postUtteranceDelay = 0.22
-            indexByUtterance[ObjectIdentifier(utterance)] = index
+            pending[ObjectIdentifier(utterance)] = (utterance, index)
             return utterance
         }
         let mustWait = stopInProgress
-        stopInProgress = false
         pendingSpeak = Task { [weak self] in
             guard let self else { return }
-            if mustWait {
-                // Let the interrupted speech finish cancelling (max ~1 s) before queueing new utterances.
-                try? await Task.sleep(for: .milliseconds(100))
-                var waited = 0
-                while self.synthesizer.isSpeaking && waited < 45 {
-                    try? await Task.sleep(for: .milliseconds(20))
-                    waited += 1
-                }
-            }
+            if mustWait { await self.waitForStopToComplete() }
             guard !Task.isCancelled else { return }
             self.activateAudioSession()
             utterances.forEach { self.synthesizer.speak($0) }
         }
+    }
+
+    /// Lets the interrupted speech finish cancelling (max ~1 s) before new utterances are queued.
+    private func waitForStopToComplete() async {
+        let deadline = ContinuousClock.now + .seconds(1)
+        while (stopInProgress || synthesizer.isSpeaking) && ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+            if Task.isCancelled { return }
+        }
+        stopInProgress = false
+    }
+
+    /// Internal state for test failure messages.
+    var debugState: String {
+        "pending=\(pending.values.map(\.index).sorted()) stopInProgress=\(stopInProgress) "
+            + "isSpeaking=\(synthesizer.isSpeaking) isPaused=\(synthesizer.isPaused)"
     }
 
     func pause() {
@@ -144,8 +157,8 @@ final class SpeechService: NSObject, SpeechServicing {
     /// Reports `.cancelled` synchronously (once). Late delegate cancel callbacks are ignored, so they
     /// can never disturb a briefing that starts right after.
     func stop() {
-        let wasActive = !indexByUtterance.isEmpty
-        indexByUtterance.removeAll()
+        let wasActive = !pending.isEmpty
+        pending.removeAll()      // callbacks of everything queued so far are now stale
         pendingSpeak?.cancel()   // an answer still waiting to be queued is dropped too
         pendingSpeak = nil
         if synthesizer.isSpeaking || synthesizer.isPaused {
@@ -165,34 +178,53 @@ final class SpeechService: NSObject, SpeechServicing {
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
 
-    fileprivate func handle(_ id: ObjectIdentifier, _ make: (Int) -> SpeechEvent) {
-        guard let index = indexByUtterance[id] else { return }
+    /// The callback's `utterance` is alive here (captured), and so is every `pending` one, so equal
+    /// identifiers mean the same object.
+    fileprivate func pendingIndex(of utterance: AVSpeechUtterance) -> Int? {
+        pending[ObjectIdentifier(utterance)]?.index
+    }
+
+    fileprivate func handle(_ utterance: AVSpeechUtterance, _ make: (Int) -> SpeechEvent) {
+        guard let index = pendingIndex(of: utterance) else { return }
         onEvent?(make(index))
     }
 
-    fileprivate func handleFinish(_ id: ObjectIdentifier) {
-        guard let index = indexByUtterance.removeValue(forKey: id) else { return }
+    fileprivate func handleFinish(_ utterance: AVSpeechUtterance) {
+        guard let index = pendingIndex(of: utterance) else {
+            stopInProgress = false   // the interrupted utterance is done
+            return
+        }
+        pending[ObjectIdentifier(utterance)] = nil
         onEvent?(.finished(sentence: index))
-        if indexByUtterance.isEmpty { deactivateAudioSession() }
+        if pending.isEmpty { deactivateAudioSession() }
+    }
+
+    fileprivate func handleCancel(_ utterance: AVSpeechUtterance) {
+        guard pendingIndex(of: utterance) != nil else {
+            stopInProgress = false   // the stop has really completed
+            if pending.isEmpty { deactivateAudioSession() }
+            return
+        }
+        // Only `stop()` cancels, and it clears `pending` first. A current sentence cancelled anyway was
+        // dropped by the synthesizer: report it instead of waiting forever for its `.finished`.
+        stop()
     }
 }
 
+// Callbacks capture the utterance itself (not just its identifier) so it stays alive until handled.
 extension SpeechService: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
-        let id = ObjectIdentifier(utterance)
-        Task { @MainActor in self.handle(id) { .started(sentence: $0) } }
+        Task { @MainActor in self.handle(utterance) { .started(sentence: $0) } }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, willSpeakRangeOfSpeechString range: NSRange,
                                        utterance: AVSpeechUtterance) {
-        let id = ObjectIdentifier(utterance)
         let r = TextRange(location: range.location, length: range.length)
-        Task { @MainActor in self.handle(id) { .willSpeak(r, sentence: $0) } }
+        Task { @MainActor in self.handle(utterance) { .willSpeak(r, sentence: $0) } }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        let id = ObjectIdentifier(utterance)
-        Task { @MainActor in self.handleFinish(id) }
+        Task { @MainActor in self.handleFinish(utterance) }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didPause utterance: AVSpeechUtterance) {
@@ -204,8 +236,6 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            if self.indexByUtterance.isEmpty { self.deactivateAudioSession() }
-        }
+        Task { @MainActor in self.handleCancel(utterance) }
     }
 }
