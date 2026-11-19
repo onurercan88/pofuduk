@@ -1,6 +1,6 @@
 # Pofuduk — Project Status
 
-_Last updated: 2026-11-15_
+_Last updated: 2026-11-19_
 
 ## Environment
 - Dev machine: Windows 11, no Xcode. Swift 6.4.2 → `PofudukCore` builds and tests here (`scripts\swift-core.cmd test`); console demo with live data via `.\scripts\pofuduk.cmd Ankara --ses` (Turkish voice "Microsoft Tolga").
@@ -144,7 +144,17 @@ _Last updated: 2026-11-15_
 - [x] Time-of-day briefing: afternoon = rest of day, evening/night = tonight's low + tomorrow
 - [x] Lip sync from the spoken word's letters (`LipSync`); storm = umbrella hat + nervous (not angry) face; windy = kite
 - [x] Cross-check current conditions with Apple WeatherKit (capability enabled, entitlement, attribution, CI entitlement check) — see API_INTEGRATIONS.md
-- [ ] Verify on device that WeatherKit answers (footer shows the Apple Weather mark)
+- [x] Verify on device that WeatherKit answers (owner: all good, 2026-11-19)
+- [x] Refresh left the bubble at "hazırlanıyor" → refresh speaks; 4 s watchdog shows text if speech never starts
+- [x] Tap reactions (glasses toss, umbrella twirl, hat flip, dance + giggle on a separate synthesizer)
+
+### App Store 1.0 (started 2026-11-19)
+- [x] Decisions: WeatherKit as primary forecast (licence blocker gone), GitHub Pages for privacy/support, Turkey only, version 1.0.0
+- [x] `AppleWeatherProvider` + `AppleWeatherSnapshotBuilder` (tested); cross-check skipped when Apple is already the source
+- [x] Privacy/support pages in `docs/` (GitHub Pages)
+- [ ] Enable GitHub Pages, CI, TestFlight 1.0.0 build + device check of the WeatherKit forecast
+- [ ] Store screenshots, App Store Connect metadata, App Privacy, age rating, Turkey-only availability
+- [ ] Submit for review
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations

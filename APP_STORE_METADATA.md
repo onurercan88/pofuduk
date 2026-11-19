@@ -7,7 +7,12 @@
 | Category | Weather (secondary: Lifestyle) |
 | Age rating | 4+ |
 | Price | Free (no ads, no account) |
+| Availability | Turkey only |
+| Version | 1.0.0 |
 | Languages | Turkish |
+| Support URL | https://onurercan88.github.io/pofuduk/destek.html |
+| Privacy policy URL | https://onurercan88.github.io/pofuduk/gizlilik.html |
+| Marketing URL | https://onurercan88.github.io/pofuduk/ |
 
 ## Promotional text (170)
 Pofuduk havayı senin için anlatıyor: yağmur ne zaman başlıyor, ne giymeli, yolculukta hava nasıl? Sesli, altyazılı ve çok sevimli!
@@ -31,7 +36,7 @@ Pofuduk yalnızca gerçek tahmin verilerine dayanır ve resmi meteorolojik uyar�
 hava durumu,yağmur,şemsiye,günaydın,kıyafet,seyahat,sesli,altyazı,bulut,tahmin,rüzgar,UV
 
 ## App Privacy (nutrition label) — to confirm at submission
-- Data collected by the developer: **none**. Coordinates are sent to the weather provider only to answer the request; there is no account and no analytics.
+- Data collected by the developer: **none**. Rounded coordinates are sent to Apple Weather (WeatherKit) or the Open-Meteo fallback only to answer the request in real time; there is no account, no server and no analytics.
 - Tracking: **no**.
 - ⚠ Re-check if a backend is introduced (coarse location + push token would then be "collected").
 

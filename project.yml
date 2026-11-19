@@ -10,7 +10,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   Pofuduk:
@@ -19,7 +19,7 @@ targets:
     sources: [Pofuduk]
     dependencies:
       - package: PofudukCore
-    # WeatherKit: "now" cross-check (capability enabled on the App ID in the developer portal).
+    # WeatherKit: primary forecast + "now" cross-check (capability enabled on the App ID in the developer portal).
     entitlements:
       path: Pofuduk/Resources/Pofuduk.entitlements
       properties:

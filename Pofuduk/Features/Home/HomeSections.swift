@@ -365,7 +365,9 @@ struct SourceFooter: View {
     var body: some View {
         if let snapshot {
             VStack(spacing: 4) {
-                if let url = sourceLink(snapshot.source) {
+                if snapshot.source == .appleWeather {
+                    AppleWeatherAttributionView(isPrimarySource: true)
+                } else if let url = sourceLink(snapshot.source) {
                     Link(destination: url) {
                         Text(snapshot.source == .weatherAPI ? "Powered by WeatherAPI.com" : "Hava verisi: Open-Meteo.com (CC BY 4.0)")
                             .underline()
@@ -396,8 +398,15 @@ struct SourceFooter: View {
 struct AppleWeatherAttributionView: View {
     static let legalPage = URL(string: "https://weatherkit.apple.com/legal-attribution.html")!
 
+    /// true = Apple Weather is the forecast source; false = it only cross-checked "now".
+    var isPrimarySource = false
+
     @Environment(\.colorScheme) private var colorScheme
     @State private var attribution: WeatherAttribution?
+
+    private var caption: String {
+        isPrimarySource ? "Diğer veri kaynakları" : "Anlık durum doğrulaması · Diğer veri kaynakları"
+    }
 
     var body: some View {
         VStack(spacing: 2) {
@@ -410,11 +419,11 @@ struct AppleWeatherAttributionView: View {
                 .frame(height: 12)
                 .accessibilityLabel(attribution.serviceName)
                 Link(destination: attribution.legalPageURL) {
-                    Text("Anlık durum doğrulaması · Diğer veri kaynakları").underline()
+                    Text(caption).underline()
                 }
             } else {
                 Link(destination: Self.legalPage) {
-                    Text("Anlık durum doğrulaması: Apple Weather").underline()
+                    Text(isPrimarySource ? "Hava verisi: Apple Weather" : "Anlık durum doğrulaması: Apple Weather").underline()
                 }
             }
         }

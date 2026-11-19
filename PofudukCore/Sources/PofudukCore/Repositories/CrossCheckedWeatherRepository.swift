@@ -78,7 +78,8 @@ public enum AppleWeatherConditionMapper {
 }
 
 /// Wraps the forecast repository and cross-checks "now" against a second source.
-/// The cross-check is best effort: failures, timeouts, demo and stale data leave the snapshot unchanged.
+/// The cross-check is best effort: failures, timeouts, demo and stale data leave the snapshot unchanged,
+/// and it is skipped when the forecast already comes from the checking source.
 /// Observations are reused for `observationTTL` per ~1 km cell to limit calls.
 public struct CrossCheckedWeatherRepository: WeatherRepository {
     private let base: WeatherRepository
@@ -100,7 +101,7 @@ public struct CrossCheckedWeatherRepository: WeatherRepository {
     public func snapshot(for place: Place, forceRefresh: Bool) async throws -> WeatherSnapshot {
         var snapshot = try await base.snapshot(for: place, forceRefresh: forceRefresh)
         let current = now()
-        guard snapshot.source != .demo, !snapshot.isStale(at: current),
+        guard snapshot.source != .demo, snapshot.source != checker.source, !snapshot.isStale(at: current),
               let observation = await observation(for: place, at: current) else { return snapshot }
         snapshot.current = CurrentConditionsReconciler.reconcile(snapshot.current, with: observation, now: current)
         snapshot.crossCheckSource = checker.source

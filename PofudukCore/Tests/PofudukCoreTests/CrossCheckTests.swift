@@ -107,14 +107,16 @@ final class CrossCheckTests: XCTestCase {
         XCTAssertNil(result.crossCheckSource)
     }
 
-    func testDemoAndStaleSnapshotsAreNotCrossChecked() async throws {
+    func testDemoStaleAndSameSourceSnapshotsAreNotCrossChecked() async throws {
         let counter = CallCounter()
         let checker = StubChecker(result: .success(observation(.rain)), counter: counter)
         let demo = TestClock.snapshot(hourly: [], current: current(.cloudy), now: now, source: .demo)
+        let apple = TestClock.snapshot(hourly: [], current: current(.cloudy), now: now, source: .appleWeather)
         let stale = TestClock.snapshot(hourly: [], current: current(.cloudy), now: now,
                                        retrievedAt: now.addingTimeInterval(-7200), expiresIn: 1800)
         _ = try await repository(base: demo, checker: checker).snapshot(for: demo.place, forceRefresh: false)
         _ = try await repository(base: stale, checker: checker).snapshot(for: stale.place, forceRefresh: false)
+        _ = try await repository(base: apple, checker: checker).snapshot(for: apple.place, forceRefresh: false)
         let calls = await counter.count
         XCTAssertEqual(calls, 0)
     }

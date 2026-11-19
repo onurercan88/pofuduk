@@ -78,10 +78,10 @@ final class DependencyContainer {
         return DependencyContainer(initialDemoScenario: raw.flatMap(MockWeatherData.Scenario.init(rawValue:)))
     }
 
-    /// WeatherAPI first (commercial use allowed on free plan) when a key is configured; Open-Meteo as fallback.
-    /// "Now" is cross-checked against Apple Weather (WeatherKit) so a missed shower doesn't show as cloudy.
+    /// Apple Weather (WeatherKit) first; WeatherAPI when a key is configured; Open-Meteo as last fallback.
+    /// A fallback forecast's "now" is cross-checked against Apple Weather so a missed shower doesn't show as cloudy.
     private static func makeLiveRepository(keychain: KeychainSecretStore, http: HTTPClient, cache: WeatherCacheStore) -> WeatherRepository {
-        var providers: [WeatherProvider] = []
+        var providers: [WeatherProvider] = [AppleWeatherProvider()]
         if keychain.value(for: KeychainSecretStore.weatherAPIKey) != nil {
             providers.append(WeatherAPIProvider(http: http, apiKey: { keychain.value(for: KeychainSecretStore.weatherAPIKey) }))
         }
