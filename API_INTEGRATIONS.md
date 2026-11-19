@@ -16,6 +16,13 @@ Terms were checked on 2026-11-14 against the official pages. Check them again be
 - `current=` has no `uv_index` → the current UV is taken from the current hour's hourly value.
 - Times are local ISO strings in the requested `timezone`. They are parsed with `LocalTimeParser` in the place's time zone, which handles DST correctly.
 
+## Apple Weather (WeatherKit) — "now" cross-check only
+- Fixes "says cloudy while it rains": `CrossCheckedWeatherRepository` wraps the cached forecast and asks WeatherKit for current conditions only (`AppleWeatherConditionsProvider`, coordinates rounded to 2 decimals). The forecast itself still comes from WeatherAPI/Open-Meteo.
+- Merge (`CurrentConditionsReconciler`): precipitation reported by either source wins; a dry WeatherKit reading never removes provider precipitation; only a heavier kind replaces a lighter one; readings older than 30 min are ignored. Intensity >= 0.1 mm/h turns a dry Apple condition into drizzle/rain (>= 0.5).
+- Best effort: 5 s timeout, failures ignored, skipped for demo and stale data, one call per ~1 km cell per 10 min. Free tier: 500,000 calls/month.
+- Setup: WeatherKit enabled on App ID `com.pofuduk.app` (Capabilities + App Services, 2026-11-19); entitlement `com.apple.developer.weatherkit` via `project.yml`. The TestFlight workflow ad-hoc signs the unsigned archive with the entitlements file and fails if the exported IPA lacks it.
+- Attribution (required): Apple Weather mark + legal link (`WeatherService.shared.attribution`) in the home footer whenever the cross-check ran; Settings › Veri kaynakları links the legal page.
+
 ## Fallback & cache
 - `WeatherProviderFallbackEngine`: providers are tried in order (WeatherAPI → Open-Meteo). If all fail it reports the most informative error (rate limit or bad response before a network or missing-key error).
 - `CachedWeatherRepository`: a cache entry younger than 30 minutes is returned without a network call. When every provider fails, a cached forecast up to 6 hours old is returned, still marked stale (the UI badge and the briefing say "güncel olmayabilir"). Older than that, the error is shown.

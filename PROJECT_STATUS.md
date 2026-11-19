@@ -143,7 +143,8 @@ _Last updated: 2026-11-15_
 - [x] Default speech ~7% faster
 - [x] Time-of-day briefing: afternoon = rest of day, evening/night = tonight's low + tomorrow
 - [x] Lip sync from the spoken word's letters (`LipSync`); storm = umbrella hat + nervous (not angry) face; windy = kite
-- [ ] Cross-check current conditions with Apple WeatherKit (needs WeatherKit capability, attribution, CI signing check)
+- [x] Cross-check current conditions with Apple WeatherKit (capability enabled, entitlement, attribution, CI entitlement check) — see API_INTEGRATIONS.md
+- [ ] Verify on device that WeatherKit answers (footer shows the Apple Weather mark)
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations

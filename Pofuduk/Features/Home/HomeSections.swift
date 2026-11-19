@@ -1,5 +1,6 @@
 import SwiftUI
 import PofudukCore
+import WeatherKit
 
 struct HomeHeader: View {
     let viewModel: HomeViewModel
@@ -356,6 +357,7 @@ struct SourceFooter: View {
         switch source {
         case .weatherAPI: return URL(string: "https://www.weatherapi.com/")
         case .openMeteo: return URL(string: "https://open-meteo.com/")
+        case .appleWeather: return AppleWeatherAttributionView.legalPage
         case .demo: return nil
         }
     }
@@ -371,6 +373,9 @@ struct SourceFooter: View {
                 } else {
                     Text("Kaynak: \(snapshot.source.attribution)")
                 }
+                if snapshot.crossCheckSource == .appleWeather {
+                    AppleWeatherAttributionView()
+                }
                 Text("Güncelleme \(TurkishFormatting.clockTime(snapshot.retrievedAt, timeZone: snapshot.place.timeZone))")
                 if isStale {
                     Label("Veriler güncel olmayabilir", systemImage: "clock.badge.exclamationmark")
@@ -383,5 +388,36 @@ struct SourceFooter: View {
             .foregroundStyle(PofudukColor.inkSecondary)
             .multilineTextAlignment(.center)
         }
+    }
+}
+
+/// Apple Weather mark + legal link, required wherever WeatherKit data is used
+/// (here: the "now" cross-check). Falls back to a text link if the attribution can't be loaded.
+struct AppleWeatherAttributionView: View {
+    static let legalPage = URL(string: "https://weatherkit.apple.com/legal-attribution.html")!
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var attribution: WeatherAttribution?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if let attribution {
+                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    Text(attribution.serviceName)
+                }
+                .frame(height: 12)
+                .accessibilityLabel(attribution.serviceName)
+                Link(destination: attribution.legalPageURL) {
+                    Text("Anlık durum doğrulaması · Diğer veri kaynakları").underline()
+                }
+            } else {
+                Link(destination: Self.legalPage) {
+                    Text("Anlık durum doğrulaması: Apple Weather").underline()
+                }
+            }
+        }
+        .task { attribution = try? await WeatherService.shared.attribution }
     }
 }

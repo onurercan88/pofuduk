@@ -51,7 +51,42 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" 2>&1 \
             | grep -E "error:|warning: .*(sign|provision)|\*\* ARCHIVE" | head -n 100
 
-      - name: Export and upload to App Store Connect / TestFlight
+      - name: Carry entitlements into the unsigned archive
+        # An unsigned app has no entitlements, so export would drop WeatherKit. An ad-hoc signature
+        # embeds them; export re-signs with the distribution profile and keeps them.
+        run: |
+          APP=build/Pofuduk.xcarchive/Products/Applications/Pofuduk.app
+          codesign --force --sign - --entitlements Pofuduk/Resources/Pofuduk.entitlements "$APP"
+          codesign -d --entitlements - --xml "$APP" 2>/dev/null | grep -q "com.apple.developer.weatherkit" \
+            || { echo "::error::WeatherKit entitlement missing in archive"; exit 1; }
+
+      - name: Export IPA and verify entitlements
+        run: |
+          set -o pipefail
+          cat > build/ExportOptions-export.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath build/Pofuduk.xcarchive -exportOptionsPlist build/ExportOptions-export.plist -exportPath build/ipa \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 \
+            | grep -E "error:|EXPORT|\*\*" | head -n 100
+          mkdir -p build/check && unzip -q build/ipa/*.ipa -d build/check
+          codesign -d --entitlements - --xml build/check/Payload/Pofuduk.app 2>/dev/null > build/check/entitlements.plist
+          if grep -A1 "com.apple.developer.weatherkit" build/check/entitlements.plist | grep -q "<true/>"; then
+            echo "WeatherKit entitlement present in signed IPA"
+          else
+            echo "::error::Signed IPA lacks the WeatherKit entitlement"; cat build/check/entitlements.plist; exit 1
+          fi
+
+      - name: Upload to App Store Connect / TestFlight
         run: |
           set -o pipefail
           cat > build/ExportOptions.plist <<EOF

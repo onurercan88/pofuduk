@@ -79,13 +79,15 @@ final class DependencyContainer {
     }
 
     /// WeatherAPI first (commercial use allowed on free plan) when a key is configured; Open-Meteo as fallback.
+    /// "Now" is cross-checked against Apple Weather (WeatherKit) so a missed shower doesn't show as cloudy.
     private static func makeLiveRepository(keychain: KeychainSecretStore, http: HTTPClient, cache: WeatherCacheStore) -> WeatherRepository {
         var providers: [WeatherProvider] = []
         if keychain.value(for: KeychainSecretStore.weatherAPIKey) != nil {
             providers.append(WeatherAPIProvider(http: http, apiKey: { keychain.value(for: KeychainSecretStore.weatherAPIKey) }))
         }
         providers.append(OpenMeteoProvider(http: http))
-        return CachedWeatherRepository(engine: WeatherProviderFallbackEngine(providers: providers), cache: cache)
+        let forecast = CachedWeatherRepository(engine: WeatherProviderFallbackEngine(providers: providers), cache: cache)
+        return CrossCheckedWeatherRepository(base: forecast, checker: AppleWeatherConditionsProvider())
     }
 
     /// "Verilerimi sil": cached forecasts, location choice and last place, notification + morning settings

@@ -86,6 +86,7 @@ struct SettingsView: View {
                 Section("Veri kaynakları") {
                     Link("Hava verisi: Open-Meteo.com (CC BY 4.0)", destination: URL(string: "https://open-meteo.com/")!)
                     Link("Hava verisi: WeatherAPI.com (anahtar yapılandırıldığında)", destination: URL(string: "https://www.weatherapi.com/")!)
+                    Link("Anlık durum doğrulaması: Apple Weather", destination: AppleWeatherAttributionView.legalPage)
                     Link("Resmi uyarılar: MGM (mgm.gov.tr)", destination: MGMOfficialPage.warnings)
                     Text("Pofuduk'un hava tahminleri resmi uyarı değildir.").font(.footnote).foregroundStyle(.secondary)
                 }

@@ -145,6 +145,8 @@ public struct DailyForecast: Equatable, Codable, Sendable, Identifiable {
 
 public enum WeatherDataSource: String, Codable, Sendable {
     case weatherAPI, openMeteo
+    /// Apple Weather (WeatherKit). Only cross-checks current conditions; never the forecast source.
+    case appleWeather
     /// Built-in sample data. Must always be labelled as such in the UI.
     case demo
 
@@ -152,6 +154,7 @@ public enum WeatherDataSource: String, Codable, Sendable {
         switch self {
         case .weatherAPI: return "WeatherAPI.com"
         case .openMeteo: return "Open-Meteo.com"
+        case .appleWeather: return "Apple Weather"
         case .demo: return "Örnek veri"
         }
     }
@@ -166,9 +169,12 @@ public struct WeatherSnapshot: Equatable, Codable, Sendable {
     public var source: WeatherDataSource
     public var retrievedAt: Date
     public var expiresAt: Date
+    /// Set when `current` was cross-checked against a second source (needs its own attribution in the UI).
+    public var crossCheckSource: WeatherDataSource?
 
     public init(place: Place, current: CurrentWeather, hourly: [HourlyForecast], daily: [DailyForecast],
-                source: WeatherDataSource, retrievedAt: Date, expiresAt: Date) {
+                source: WeatherDataSource, retrievedAt: Date, expiresAt: Date,
+                crossCheckSource: WeatherDataSource? = nil) {
         self.place = place
         self.current = current
         self.hourly = hourly.sorted { $0.time < $1.time }
@@ -176,6 +182,7 @@ public struct WeatherSnapshot: Equatable, Codable, Sendable {
         self.source = source
         self.retrievedAt = retrievedAt
         self.expiresAt = expiresAt
+        self.crossCheckSource = crossCheckSource
     }
 
     public func isStale(at now: Date) -> Bool { now >= expiresAt }

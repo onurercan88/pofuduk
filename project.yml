@@ -19,6 +19,11 @@ targets:
     sources: [Pofuduk]
     dependencies:
       - package: PofudukCore
+    # WeatherKit: "now" cross-check (capability enabled on the App ID in the developer portal).
+    entitlements:
+      path: Pofuduk/Resources/Pofuduk.entitlements
+      properties:
+        com.apple.developer.weatherkit: true
     info:
       path: Pofuduk/Resources/Info.plist
       properties:
