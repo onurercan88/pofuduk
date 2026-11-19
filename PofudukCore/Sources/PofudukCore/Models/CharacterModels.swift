@@ -29,14 +29,24 @@ public struct CharacterAppearance: Equatable, Sendable {
     public var isMorningGreeting: Bool
     /// Word being spoken right now (drives the mouth while speaking; nil = generic talking motion).
     public var speechCue: SpokenWordCue?
+    /// Fun reaction to a tap (glasses toss, umbrella play, dance + giggle).
+    public var tapReaction: TapReactionPlayback?
 
     public init(mood: CharacterMood, theme: WeatherTheme, isMorningGreeting: Bool = false,
-                speechCue: SpokenWordCue? = nil) {
+                speechCue: SpokenWordCue? = nil, tapReaction: TapReactionPlayback? = nil) {
         self.mood = mood
         self.theme = theme
         self.isMorningGreeting = isMorningGreeting
         self.speechCue = speechCue
+        self.tapReaction = tapReaction
     }
+
+    /// Sunny look wears sunglasses, except while asleep or showing an error.
+    public static func wearsSunglasses(theme: WeatherTheme, mood: CharacterMood) -> Bool {
+        theme == .sunny && mood != .sleeping && mood != .error
+    }
+
+    public var wearsSunglasses: Bool { Self.wearsSunglasses(theme: theme, mood: mood) }
 }
 
 public enum PersonalityStyle: String, Codable, Sendable, CaseIterable {

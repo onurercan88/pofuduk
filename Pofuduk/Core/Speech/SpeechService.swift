@@ -32,6 +32,8 @@ protocol SpeechServicing: AnyObject {
     func pause()
     func resume()
     func stop()
+    /// Short fun sound (a giggle) on a separate channel: no events, never touches subtitles.
+    func playEffect(_ text: String)
 }
 
 /// AVSpeechSynthesizer adapter. One utterance per sentence → exact sentence sync via `didStart`,
@@ -41,6 +43,8 @@ final class SpeechService: NSObject, SpeechServicing {
     var onEvent: ((SpeechEvent) -> Void)?
 
     private let synthesizer = AVSpeechSynthesizer()
+    /// Separate synthesizer (no delegate) for giggles, so they never emit briefing events.
+    private let effectsSynthesizer = AVSpeechSynthesizer()
     /// Set by `stop()`; the next `speak()` waits until the stop has really completed. Utterances queued
     /// while `stopSpeaking(at: .immediate)` is still in progress can be silently dropped (answers stuck at
     /// "hazırlanıyor" — seen in the CI tour recording). Replacing the synthesizer instead left audio stalled.
@@ -146,6 +150,24 @@ final class SpeechService: NSObject, SpeechServicing {
             + "isSpeaking=\(synthesizer.isSpeaking) isPaused=\(synthesizer.isPaused)"
     }
 
+    func playEffect(_ text: String) {
+        guard let voice, !synthesizer.isSpeaking else { return }
+        if effectsSynthesizer.isSpeaking { effectsSynthesizer.stopSpeaking(at: .immediate) }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = voice
+        utterance.rate = Self.defaultRate * 1.1
+        utterance.pitchMultiplier = 1.5
+        activateAudioSession()
+        effectsSynthesizer.speak(utterance)
+        // Release the session (un-duck other audio) once the giggle is over and no briefing started.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, !self.effectsSynthesizer.isSpeaking, !self.synthesizer.isSpeaking,
+                  self.pending.isEmpty else { return }
+            self.deactivateAudioSession()
+        }
+    }
+
     func pause() {
         if synthesizer.isSpeaking { synthesizer.pauseSpeaking(at: .word) }
     }
@@ -157,6 +179,7 @@ final class SpeechService: NSObject, SpeechServicing {
     /// Reports `.cancelled` synchronously (once). Late delegate cancel callbacks are ignored, so they
     /// can never disturb a briefing that starts right after.
     func stop() {
+        if effectsSynthesizer.isSpeaking { effectsSynthesizer.stopSpeaking(at: .immediate) }
         let wasActive = !pending.isEmpty
         pending.removeAll()      // callbacks of everything queued so far are now stale
         pendingSpeak?.cancel()   // an answer still waiting to be queued is dropped too

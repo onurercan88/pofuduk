@@ -48,7 +48,10 @@ final class HomeViewModel {
     var showWarnings = false
     var showSettings = false
     private(set) var preferences: UserPreferences
-    private(set) var isReacting = false
+    /// Fun reaction to a tap while not speaking (nil when none is playing).
+    private(set) var tapReaction: TapReactionPlayback?
+    var isReacting: Bool { tapReaction != nil }
+    private var tapCount = 0
     /// Word being spoken (wall-clock start, matched against the character's animation clock).
     private(set) var speechCue: SpokenWordCue?
 
@@ -99,8 +102,9 @@ final class HomeViewModel {
         let theme = briefing?.theme ?? .cloudy
         if isWaking { return CharacterAppearance(mood: .sleeping, theme: theme, isMorningGreeting: true) }
         if conversation.isListening { return CharacterAppearance(mood: .listening, theme: theme) }
-        if isReacting {
-            return CharacterAppearance(mood: preferences.style == .playful ? .celebrating : .happy, theme: theme)
+        if let tapReaction {
+            return CharacterAppearance(mood: .celebrating, theme: loadState == .needsLocation ? .cloudy : theme,
+                                       tapReaction: tapReaction)
         }
         if conversation.isThinking { return CharacterAppearance(mood: .thinking, theme: theme) }
         switch loadState {
@@ -153,14 +157,20 @@ final class HomeViewModel {
                          restingMood: .happy, theme: briefing?.theme ?? .cloudy))
     }
 
-    /// Tapping Pofuduk: pause/resume while speaking, otherwise a short happy reaction (no speech).
+    /// Tapping Pofuduk: pause/resume while speaking; otherwise a just-for-fun reaction — glasses tossed,
+    /// umbrella played with, or a dance — with a giggle (spoken when sound is on; subtitles untouched).
     func tapCharacter() {
         if track.isActive { togglePause(); return }
-        guard !isReacting else { return }
-        isReacting = true
+        guard tapReaction == nil else { return }
+        let current = appearance
+        let playback = TapReactionPlayback(reaction: .choose(for: current.theme, mood: current.mood),
+                                           laugh: TapReaction.laugh(forTap: tapCount), startedAt: Date())
+        tapCount += 1
+        tapReaction = playback
+        if isSoundOn, container.speech.hasTurkishVoice { container.speech.playEffect(playback.laugh) }
         Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(1200))
-            self?.isReacting = false
+            try? await Task.sleep(for: .seconds(TapReaction.duration))
+            self?.tapReaction = nil
         }
     }
 

@@ -13,6 +13,9 @@ final class PreviewSpeechService: SpeechServicing {
     var autoFinish: Bool
     /// Simulates the synthesizer silently dropping queued utterances (no events at all).
     var dropsUtterances = false
+    private(set) var effects: [String] = []
+
+    func playEffect(_ text: String) { effects.append(text) }
 
     init(hasTurkishVoice: Bool = true, autoFinish: Bool = false) {
         self.hasTurkishVoice = hasTurkishVoice

@@ -58,10 +58,30 @@ struct CharacterFigure: View {
 
     private var mood: CharacterMood { appearance.mood }
     private var theme: WeatherTheme { appearance.theme }
-    private var wearsSunglasses: Bool { theme == .sunny && mood != .sleeping && mood != .error }
+    private var wearsSunglasses: Bool { appearance.wearsSunglasses }
+
+    /// Tap reaction in progress (nil when none, or frozen for Reduce Motion).
+    private var reaction: (kind: TapReaction, progress: Double, laugh: String)? {
+        guard let playback = appearance.tapReaction, let p = playback.progress(at: time) else { return nil }
+        return (playback.reaction, p, playback.laugh)
+    }
+
+    /// Body motion; a dance (three bouncy steps side to side) replaces it during that reaction.
+    private func currentMotion(dancing progress: Double?) -> Motion {
+        var motion = Motion(mood: mood, theme: theme, time: time)
+        if let progress {
+            let beat = progress * 2 * .pi * 3
+            motion.bob = CGFloat(abs(sin(beat)) * 18)
+            motion.tilt = sin(beat) * 14
+            motion.sway = CGFloat(sin(beat / 2) * 16)
+        }
+        return motion
+    }
 
     var body: some View {
-        let motion = Motion(mood: mood, theme: theme, time: time)
+        let reaction = self.reaction
+        let motion = currentMotion(dancing: reaction?.kind == .dance ? reaction?.progress : nil)
+        let tossing = reaction?.kind == .tossGlasses
         ZStack {
             // Ground shadow
             Ellipse()
@@ -71,7 +91,11 @@ struct CharacterFigure: View {
                 .offset(y: 92)
 
             ZStack {
-                if theme == .rainy { UmbrellaView(time: time).position(x: 156, y: 18) }
+                if theme == .rainy {
+                    UmbrellaView(time: time)
+                        .modifier(UmbrellaTwirl(progress: reaction?.kind == .twirlUmbrella ? reaction?.progress : nil))
+                        .position(x: 156, y: 18)
+                }
                 if theme == .windy, mood != .sleeping { KiteView(time: time) }
 
                 CloudBody()
@@ -87,23 +111,94 @@ struct CharacterFigure: View {
                     )
                     .shadow(color: PofudukColor.cloudShade.opacity(0.6), radius: 12, y: 6)
 
-                FaceView(mood: mood, theme: theme, time: time, wearsSunglasses: wearsSunglasses,
+                FaceView(mood: mood, theme: theme, time: time, wearsSunglasses: wearsSunglasses && !tossing,
                          speechCue: appearance.speechCue)
 
                 if theme == .snowy || theme == .windy {
                     ScarfView(time: time, windy: theme == .windy).position(x: 100, y: 167)
                 }
-                if wearsSunglasses { SunglassesView().position(x: 100, y: 117) }
+                if wearsSunglasses {
+                    SunglassesView()
+                        .modifier(GlassesToss(progress: tossing ? reaction?.progress : nil))
+                        .position(x: 100, y: 117)
+                }
 
                 // Worn on top, so drawn after the body.
-                if theme == .stormy { UmbrellaHatView(time: time).position(x: 106, y: 6) }
+                if theme == .stormy {
+                    UmbrellaHatView(time: time)
+                        .modifier(HatFlip(progress: reaction?.kind == .spinUmbrellaHat ? reaction?.progress : nil))
+                        .position(x: 106, y: 6)
+                }
 
                 MoodDecorations(mood: mood, time: time)
             }
             .scaleEffect(x: motion.squashX, y: motion.squashY, anchor: .bottom)
             .rotationEffect(.degrees(motion.tilt), anchor: .bottom)
-            .offset(y: -motion.bob)
+            .offset(x: motion.sway, y: -motion.bob)
+
+            if let reaction { LaughBubble(text: reaction.laugh, progress: reaction.progress) }
         }
+    }
+}
+
+// MARK: - Tap reactions (just for fun)
+
+/// Sunglasses fly up spinning and land back on the nose.
+struct GlassesToss: ViewModifier {
+    let progress: Double?
+
+    func body(content: Content) -> some View {
+        let p = progress ?? 0
+        let arc = sin(p * .pi)
+        content
+            .rotationEffect(.degrees(p * 720))
+            .offset(x: CGFloat(arc * 18), y: CGFloat(-arc * 120))
+    }
+}
+
+/// The held umbrella spins on its handle and hops a little.
+struct UmbrellaTwirl: ViewModifier {
+    let progress: Double?
+
+    func body(content: Content) -> some View {
+        let p = progress ?? 0
+        // Spinning on its handle = horizontal flip; never exactly 0 (singular transform).
+        let c = progress == nil ? 1 : cos(p * 4 * .pi)
+        content
+            .scaleEffect(x: CGFloat(c >= 0 ? max(0.05, c) : min(-0.05, c)), y: 1)
+            .rotationEffect(.degrees(sin(p * 4 * .pi) * 18), anchor: .bottom)
+            .offset(y: CGFloat(-sin(p * .pi) * 22))
+    }
+}
+
+/// The umbrella hat is tossed up, flips once and is caught again.
+struct HatFlip: ViewModifier {
+    let progress: Double?
+
+    func body(content: Content) -> some View {
+        let p = progress ?? 0
+        content
+            .rotationEffect(.degrees(p * 360))
+            .offset(y: CGFloat(-sin(p * .pi) * 60))
+    }
+}
+
+/// "Hihi!" in a little bubble that floats up and fades out.
+struct LaughBubble: View {
+    let text: String
+    let progress: Double
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .foregroundStyle(PofudukColor.accent)
+            .fixedSize()
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(.white.opacity(0.92)))
+            .scaleEffect(CGFloat(0.6 + 0.4 * min(1, progress * 5)))
+            .opacity(progress > 0.75 ? (1 - progress) * 4 : 1)
+            .position(x: 138, y: CGFloat(14 - progress * 18))
     }
 }
 
@@ -113,6 +208,8 @@ struct Motion {
     var squashX: CGFloat
     var squashY: CGFloat
     var tilt: Double
+    /// Sideways offset (dance only).
+    var sway: CGFloat = 0
 
     init(mood: CharacterMood, theme: WeatherTheme, time t: TimeInterval) {
         let breathe = sin(t * 2.0)

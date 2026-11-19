@@ -266,7 +266,29 @@ final class HomeViewModelTests: XCTestCase {
         vm.stop()
         vm.tapCharacter()
         XCTAssertTrue(vm.isReacting)
-        XCTAssertEqual(vm.appearance.mood, .happy)
+        XCTAssertEqual(vm.appearance.mood, .celebrating)
+        XCTAssertNotNil(vm.appearance.tapReaction)
+    }
+
+    func testTapReactionGigglesAndMatchesTheLook() async {
+        let speech = PreviewSpeechService()
+        let vm = makeViewModel(speech: speech, demo: .sunny)
+        await vm.onAppear()
+        vm.stop()
+        vm.tapCharacter()
+        XCTAssertEqual(vm.appearance.tapReaction?.reaction, .tossGlasses, "Sunny Pofuduk wears glasses → tosses them")
+        XCTAssertEqual(speech.effects, [TapReaction.laughs[0]])
+        XCTAssertFalse(vm.track.sentences.contains(TapReaction.laughs[0]), "The giggle never enters the subtitles")
+    }
+
+    func testMutedTapReactsSilently() async {
+        let speech = PreviewSpeechService()
+        let vm = makeViewModel(speech: speech, demo: .rainyAfternoon)
+        vm.toggleSound()
+        await vm.onAppear()
+        vm.tapCharacter()
+        XCTAssertEqual(vm.appearance.tapReaction?.reaction, .twirlUmbrella)
+        XCTAssertTrue(speech.effects.isEmpty)
     }
 
     // MARK: - MGM official warnings
