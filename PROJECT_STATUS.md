@@ -153,11 +153,11 @@ _Last updated: 2026-11-19_
 - [x] `AppleWeatherProvider` + `AppleWeatherSnapshotBuilder` (tested); cross-check skipped when Apple is already the source
 - [x] Privacy/support pages in `docs/` (GitHub Pages)
 - [x] GitHub Pages live (https://onurercan88.github.io/pofuduk/), CI green (5201a7f), TestFlight 1.0.0 uploaded (run 44586219944)
-- [ ] Device check of the WeatherKit forecast on 1.0.0
+- [ ] Device check of the WeatherKit forecast on 1.0.0 (not done before submission)
 - [x] Store screenshots: `store-screenshots.yml` (iPhone 17 Pro Max, 1320×2868); chosen 6 in `store-screenshots/` (gitignored)
 - [x] App Store Connect: description, keywords, promo text, URLs, review notes, subtitle, categories (Weather/Lifestyle), content rights, age rating 4+, free, Türkiye only, App Privacy "Data Not Collected" (published)
-- [ ] Owner: copyright line, App Review contact info, upload screenshots, release option; then attach build 1.0.0
-- [ ] Submit for review
+- [x] Screenshots attached (6.9" slot; required 6.1"/6.3" slot uses them scaled), copyright + review contact (owner), build 7 attached, age rating incl. new Shared Location/Dating questions, release: automatic after approval
+- [x] Submitted for App Review 2026-11-19 (1.0.0 build 7) — "Waiting for Review"
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations

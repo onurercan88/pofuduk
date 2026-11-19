@@ -37,6 +37,6 @@ Status as of 2026-11-19. ✅ done · ⛔ blocker · ☐ to do.
 - ✅ Permission texts (Turkish): location, microphone, speech recognition (`project.yml`).
 - ✅ App icon: rendered from the character by CI (`AppIcon-1024.png`, opaque) and committed to `AppIcon.appiconset`.
 - ✅ App Store metadata draft and screenshot plan: APP_STORE_METADATA.md.
-- ☐ Final marketing screenshots (6.7" and 6.1"), from live data once licensing is settled.
-- ☐ Support URL https://onurercan88.github.io/pofuduk/destek.html and privacy policy URL https://onurercan88.github.io/pofuduk/gizlilik.html (GitHub Pages from `docs/`; enable Pages once).
-- ☐ Release decisions (2026-11-19): version 1.0.0, free, available in Turkey only (no EU → no DSA trader declaration needed).
+- ✅ Store screenshots (6.9", demo data via `store-screenshots.yml`); submitted 2026-11-19.
+- ✅ Support URL https://onurercan88.github.io/pofuduk/destek.html and privacy policy URL https://onurercan88.github.io/pofuduk/gizlilik.html (GitHub Pages from `docs/`; enable Pages once).
+- ✅ Release decisions (2026-11-19): version 1.0.0, free, available in Turkey only (no EU → no DSA trader declaration needed).
