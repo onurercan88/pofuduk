@@ -28,7 +28,7 @@ jobs:
           TEST_RUNNER_POFUDUK_ICON_OUTPUT="$PWD/screenshots/AppIcon-1024.png" \
           TEST_RUNNER_POFUDUK_SAMPLE_DIR="$PWD/screenshots" xcodebuild test -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
             -destination "id=$SIM_ID" CODE_SIGNING_ALLOWED=NO 2>&1 \
-            | grep -E "error:|warning: .*Pofuduk|Test Case .*(passed|failed)|\*\* (BUILD|TEST)|AUDIT:" | head -n 250
+            | grep -E "error:|warning: .*Pofuduk|Test Case .*(passed|failed|skipped)|Test skipped|\*\* (BUILD|TEST)|AUDIT:" | head -n 250
       - name: Screenshots (every demo scenario, light + dark)
         run: |
           APP=build/Build/Products/Debug-iphonesimulator/Pofuduk.app
