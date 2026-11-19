@@ -7,6 +7,7 @@ struct FaceView: View {
     let theme: WeatherTheme
     let time: TimeInterval
     let wearsSunglasses: Bool
+    var speechCue: SpokenWordCue? = nil
 
     enum EyeStyle { case open, wide, closed, happy }
     enum BrowStyle { case none, worried, serious }
@@ -22,7 +23,9 @@ struct FaceView: View {
     }
 
     private var browStyle: BrowStyle {
-        if mood == .warning || theme == .stormy { return .serious }
+        // Device feedback: inward-slanted brows read as angry. Storms and warnings get raised,
+        // slightly nervous brows instead — Pofuduk is careful, never cross.
+        if mood == .warning || theme == .stormy { return .worried }
         if mood == .sad || mood == .error { return .worried }
         if theme == .rainy, mood == .idle || mood == .speaking { return .worried }
         return .none
@@ -33,9 +36,10 @@ struct FaceView: View {
         case .speaking: return .speaking
         case .happy, .celebrating: return .bigSmile
         case .surprised, .sleeping: return .oh
-        case .warning, .thinking: return .flat
+        case .warning: return .oh
+        case .thinking: return .flat
         case .sad, .error: return .frown
-        default: return theme == .stormy ? .flat : .smile
+        default: return .smile
         }
     }
 
@@ -53,10 +57,15 @@ struct FaceView: View {
         }
     }
 
-    private var mouthOpenness: CGFloat {
-        guard mood == .speaking else { return 0 }
+    /// While speaking: follows the letters of the word being spoken (LipSync);
+    /// without a word cue (e.g. previews) falls back to a generic talking rhythm.
+    private var mouthPose: MouthPose {
+        guard mood == .speaking else { return MouthPose(open: 0, round: 0) }
+        if let speechCue {
+            return LipSync.pose(for: speechCue, at: Date(timeIntervalSinceReferenceDate: time))
+        }
         let v = abs(sin(time * 11)) * (0.6 + 0.4 * sin(time * 3.7))
-        return CGFloat(0.25 + 0.75 * max(0, v))
+        return MouthPose(open: 0.25 + 0.75 * max(0, v), round: 0)
     }
 
     var body: some View {
@@ -75,7 +84,7 @@ struct FaceView: View {
                 BrowsView(style: browStyle)
             }
 
-            MouthView(style: mouthStyle, openness: mouthOpenness).position(x: 100, y: 145)
+            MouthView(style: mouthStyle, pose: mouthPose).position(x: 100, y: 145)
         }
         .frame(width: 200, height: 200)
     }
@@ -128,7 +137,10 @@ struct BrowsView: View {
 
 struct MouthView: View {
     let style: FaceView.MouthStyle
-    let openness: CGFloat
+    let pose: MouthPose
+    private var openness: CGFloat { CGFloat(pose.open) }
+    /// Rounded vowels (o, u) make the mouth narrower.
+    private var width: CGFloat { CGFloat(24 - 9 * pose.round) }
 
     var body: some View {
         switch style {
@@ -153,7 +165,7 @@ struct MouthView: View {
                 Ellipse().fill(PofudukColor.cheek).frame(width: 12, height: max(2, 6 * openness)).offset(y: 5 * openness)
             }
             .clipShape(Ellipse())
-            .frame(width: 22, height: 4 + 16 * openness)
+            .frame(width: width, height: 3 + 17 * openness)
         }
     }
 }

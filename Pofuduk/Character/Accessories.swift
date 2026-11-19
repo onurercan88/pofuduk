@@ -49,6 +49,73 @@ struct UmbrellaView: View {
     }
 }
 
+/// Thunderstorm joke: a tiny umbrella worn like a hat, trembling a little at each flash.
+struct UmbrellaHatView: View {
+    let time: TimeInterval
+
+    var body: some View {
+        // Short shiver every ~2.6 s, in step with the lightning in WeatherEffectsView.
+        let phase = time.truncatingRemainder(dividingBy: 2.6)
+        let shiver = phase < 0.35 ? sin(phase * 60) * 4 : 0
+        ZStack(alignment: .top) {
+            Capsule().fill(Color(red: 0.45, green: 0.32, blue: 0.28)).frame(width: 4, height: 18).offset(y: 26)
+            CanopyShape()
+                .fill(LinearGradient(colors: [Color(red: 0.42, green: 0.62, blue: 1.0), Color(red: 0.55, green: 0.85, blue: 1.0)],
+                                     startPoint: .leading, endPoint: .trailing))
+                .overlay(CanopyShape().stroke(.white.opacity(0.75), lineWidth: 1.5))
+                .frame(width: 78, height: 30)
+                .offset(y: 4)
+            Circle().fill(Color(red: 0.42, green: 0.62, blue: 1.0)).frame(width: 7, height: 7)
+        }
+        .frame(width: 80, height: 46)
+        .rotationEffect(.degrees(-6 + shiver + sin(time * 1.6) * 2), anchor: .bottom)
+    }
+}
+
+/// Windy: a kite on a string, held by Pofuduk. Drawn in the 200×200 character space.
+struct KiteView: View {
+    let time: TimeInterval
+
+    var body: some View {
+        let kite = CGPoint(x: 182 + sin(time * 1.3) * 10, y: -10 + cos(time * 1.7) * 7)
+        let hand = CGPoint(x: 176, y: 128)
+        ZStack {
+            Path { p in
+                p.move(to: hand)
+                p.addQuadCurve(to: CGPoint(x: kite.x - 2, y: kite.y + 22),
+                               control: CGPoint(x: (hand.x + kite.x) / 2 + 18, y: (hand.y + kite.y) / 2 + 14))
+            }
+            .stroke(Color(red: 0.45, green: 0.38, blue: 0.36).opacity(0.8), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+
+            let tilt = CGAffineTransform(rotationAngle: sin(time * 2.1) * 0.2)
+                .concatenating(CGAffineTransform(translationX: kite.x, y: kite.y))
+            Self.diamond.applying(tilt)
+                .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.55, blue: 0.45), Color(red: 1.0, green: 0.82, blue: 0.4)],
+                                     startPoint: .top, endPoint: .bottom))
+            Self.spars.applying(tilt).stroke(.white.opacity(0.7), lineWidth: 1.2)
+
+            // Tail bows
+            ForEach(0..<3, id: \.self) { i in
+                let k = Double(i + 1)
+                Capsule().fill(Color(red: 1.0, green: 0.62, blue: 0.62))
+                    .frame(width: 8, height: 4)
+                    .rotationEffect(.degrees(sin(time * 3 + k) * 30))
+                    .position(x: kite.x - 4 * k + sin(time * 3 + k) * 3, y: kite.y + 24 + 9 * k)
+            }
+        }
+        .frame(width: 200, height: 200)
+    }
+
+    private static let diamond = Path { p in
+        p.move(to: CGPoint(x: 0, y: -22)); p.addLine(to: CGPoint(x: 16, y: 0))
+        p.addLine(to: CGPoint(x: 0, y: 24)); p.addLine(to: CGPoint(x: -16, y: 0)); p.closeSubpath()
+    }
+    private static let spars = Path { p in
+        p.move(to: CGPoint(x: 0, y: -22)); p.addLine(to: CGPoint(x: 0, y: 24))
+        p.move(to: CGPoint(x: -16, y: 0)); p.addLine(to: CGPoint(x: 16, y: 0))
+    }
+}
+
 /// Umbrella canopy with a scalloped bottom edge.
 struct CanopyShape: Shape {
     func path(in rect: CGRect) -> Path {

@@ -72,6 +72,7 @@ struct CharacterFigure: View {
 
             ZStack {
                 if theme == .rainy { UmbrellaView(time: time).position(x: 156, y: 18) }
+                if theme == .windy, mood != .sleeping { KiteView(time: time) }
 
                 CloudBody()
                     .fill(LinearGradient(colors: [PofudukColor.cloudTop, PofudukColor.cloudBottom],
@@ -86,12 +87,16 @@ struct CharacterFigure: View {
                     )
                     .shadow(color: PofudukColor.cloudShade.opacity(0.6), radius: 12, y: 6)
 
-                FaceView(mood: mood, theme: theme, time: time, wearsSunglasses: wearsSunglasses)
+                FaceView(mood: mood, theme: theme, time: time, wearsSunglasses: wearsSunglasses,
+                         speechCue: appearance.speechCue)
 
                 if theme == .snowy || theme == .windy {
                     ScarfView(time: time, windy: theme == .windy).position(x: 100, y: 167)
                 }
                 if wearsSunglasses { SunglassesView().position(x: 100, y: 117) }
+
+                // Worn on top, so drawn after the body.
+                if theme == .stormy { UmbrellaHatView(time: time).position(x: 106, y: 6) }
 
                 MoodDecorations(mood: mood, time: time)
             }

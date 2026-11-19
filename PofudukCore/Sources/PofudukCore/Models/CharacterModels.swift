@@ -13,10 +13,10 @@ public enum WeatherTheme: String, Codable, Sendable, CaseIterable {
         switch self {
         case .sunny: return "Güneş gözlüklü, mutlu Pofuduk"
         case .rainy: return "Küçük şemsiyesiyle Pofuduk"
-        case .stormy: return "Dikkatli ve ciddi görünen Pofuduk"
+        case .stormy: return "Başında minik şemsiyesiyle, biraz ürkek Pofuduk"
         case .snowy: return "Atkı takmış Pofuduk"
         case .cloudy: return "Sakin Pofuduk"
-        case .windy: return "Rüzgârda sallanan Pofuduk"
+        case .windy: return "Rüzgârda uçurtma uçuran Pofuduk"
         case .night: return "Gece modunda Pofuduk"
         }
     }
@@ -27,11 +27,15 @@ public struct CharacterAppearance: Equatable, Sendable {
     public var mood: CharacterMood
     public var theme: WeatherTheme
     public var isMorningGreeting: Bool
+    /// Word being spoken right now (drives the mouth while speaking; nil = generic talking motion).
+    public var speechCue: SpokenWordCue?
 
-    public init(mood: CharacterMood, theme: WeatherTheme, isMorningGreeting: Bool = false) {
+    public init(mood: CharacterMood, theme: WeatherTheme, isMorningGreeting: Bool = false,
+                speechCue: SpokenWordCue? = nil) {
         self.mood = mood
         self.theme = theme
         self.isMorningGreeting = isMorningGreeting
+        self.speechCue = speechCue
     }
 }
 

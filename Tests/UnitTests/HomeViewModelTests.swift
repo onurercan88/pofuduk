@@ -479,6 +479,14 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.track.status, .finished)
     }
 
+    func testSpokenWordIsExtractedFromUTF16Range() {
+        let sentences = ["Günaydın! Şemsiyeni unutma."]
+        // "Şemsiyeni" starts after "Günaydın! " (10 UTF-16 units) and is 9 long.
+        XCTAssertEqual(HomeViewModel.word(in: sentences, sentence: 0, range: TextRange(location: 10, length: 9)), "Şemsiyeni")
+        XCTAssertNil(HomeViewModel.word(in: sentences, sentence: 1, range: TextRange(location: 0, length: 3)))
+        XCTAssertNil(HomeViewModel.word(in: sentences, sentence: 0, range: TextRange(location: 25, length: 9)))
+    }
+
     func testStormScenarioPutsCharacterInWarningMode() async {
         let vm = makeViewModel(speech: PreviewSpeechService(autoFinish: true))
         await vm.onAppear()

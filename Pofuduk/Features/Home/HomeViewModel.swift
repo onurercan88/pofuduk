@@ -45,6 +45,8 @@ final class HomeViewModel {
     var showSettings = false
     private(set) var preferences: UserPreferences
     private(set) var isReacting = false
+    /// Word being spoken (wall-clock start, matched against the character's animation clock).
+    private(set) var speechCue: SpokenWordCue?
 
     /// Style/length come from the user's preferences; facts never depend on them.
     var personality: CharacterPersonalityEngine {
@@ -103,7 +105,7 @@ final class HomeViewModel {
         case .needsLocation: return CharacterAppearance(mood: .listening, theme: .cloudy)
         case .loaded: break
         }
-        if track.status == .speaking { return CharacterAppearance(mood: .speaking, theme: theme) }
+        if track.status == .speaking { return CharacterAppearance(mood: .speaking, theme: theme, speechCue: speechCue) }
         // Any verified official warning for this place puts Pofuduk in warning mode.
         if !activeWarnings.isEmpty { return CharacterAppearance(mood: .warning, theme: theme) }
         // A serious main briefing keeps warning mode even after a casual answer.
@@ -407,14 +409,34 @@ final class HomeViewModel {
     private func handle(_ event: SpeechEvent) {
         switch event {
         case .started(let i): track.didStart(sentenceAt: i)
-        case .willSpeak(let range, let i): track.willSpeak(range, sentenceAt: i)
-        case .finished(let i): track.didFinish(sentenceAt: i)
-        case .paused: track.didPause()
+        case .willSpeak(let range, let i):
+            track.willSpeak(range, sentenceAt: i)
+            speechCue = Self.word(in: track.sentences, sentence: i, range: range).map {
+                SpokenWordCue(word: $0, startedAt: Date(), rateMultiplier: preferences.clampedSpeechRate)
+            }
+        case .finished(let i):
+            track.didFinish(sentenceAt: i)
+            speechCue = nil
+        case .paused:
+            track.didPause()
+            speechCue = nil
         case .resumed: track.didResume()
-        case .cancelled: track.didStop()
+        case .cancelled:
+            track.didStop()
+            speechCue = nil
         case .voiceUnavailable:
             voiceMissing = true
             track.showAllWithoutAudio()
         }
+    }
+
+    /// The word the synthesizer reported (UTF-16 range, as AVSpeechSynthesizer gives it).
+    static func word(in sentences: [String], sentence index: Int, range: TextRange) -> String? {
+        guard sentences.indices.contains(index) else { return nil }
+        let utf16 = sentences[index].utf16
+        guard range.location >= 0, range.length > 0, range.location + range.length <= utf16.count else { return nil }
+        let start = utf16.index(utf16.startIndex, offsetBy: range.location)
+        let end = utf16.index(start, offsetBy: range.length)
+        return String(sentences[index][start..<end])
     }
 }
