@@ -135,7 +135,16 @@ _Last updated: 2026-11-15_
 - [x] Reduce Motion / still renders freeze with open eyes
 - [x] Docs: DEVICE_TESTING.md (iPhone test guide, TestFlight setup), Open-Meteo and MGM request drafts (API_INTEGRATIONS.md)
 - [x] TestFlight upload (build 0.1.0 (2))
-- [ ] Real-iPhone test list (DEVICE_TESTING.md): add internal tester, install via TestFlight app
+- [x] Real-iPhone test (3 internal testers via TestFlight; voice questions work)
+
+### Device feedback (2026-11-19)
+- [x] Cloudy weather showed the rainy character: look now = weather now (+ rain within 1 h); words keep the rest-of-day outlook (`outlookTheme`)
+- [x] "Cloudy" while raining: Open-Meteo current precipitation amount overrides a dry weather code
+- [x] Default speech ~7% faster
+- [x] Time-of-day briefing: afternoon = rest of day, evening/night = tonight's low + tomorrow
+- [x] Lip sync from the spoken word's letters (`LipSync`); storm = umbrella hat + nervous (not angry) face; windy = kite
+- [ ] Cross-check current conditions with Apple WeatherKit (needs WeatherKit capability, attribution, CI signing check)
+- [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations
 - MGM: no authorized machine-readable source → the app shows "unavailable" + the official page (https://www.mgm.gov.tr/meteouyari/turkiye.aspx, verified).
