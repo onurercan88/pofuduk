@@ -152,8 +152,11 @@ _Last updated: 2026-11-19_
 - [x] Decisions: WeatherKit as primary forecast (licence blocker gone), GitHub Pages for privacy/support, Turkey only, version 1.0.0
 - [x] `AppleWeatherProvider` + `AppleWeatherSnapshotBuilder` (tested); cross-check skipped when Apple is already the source
 - [x] Privacy/support pages in `docs/` (GitHub Pages)
-- [ ] Enable GitHub Pages, CI, TestFlight 1.0.0 build + device check of the WeatherKit forecast
-- [ ] Store screenshots, App Store Connect metadata, App Privacy, age rating, Turkey-only availability
+- [x] GitHub Pages live (https://onurercan88.github.io/pofuduk/), CI green (5201a7f), TestFlight 1.0.0 uploaded (run 44586219944)
+- [ ] Device check of the WeatherKit forecast on 1.0.0
+- [x] Store screenshots: `store-screenshots.yml` (iPhone 17 Pro Max, 1320×2868); chosen 6 in `store-screenshots/` (gitignored)
+- [x] App Store Connect: description, keywords, promo text, URLs, review notes, subtitle, categories (Weather/Lifestyle), content rights, age rating 4+, free, Türkiye only, App Privacy "Data Not Collected" (published)
+- [ ] Owner: copyright line, App Review contact info, upload screenshots, release option; then attach build 1.0.0
 - [ ] Submit for review
 - [ ] New TestFlight build with the above, then re-test on device
 
