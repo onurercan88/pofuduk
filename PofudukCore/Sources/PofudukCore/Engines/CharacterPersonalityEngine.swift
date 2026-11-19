@@ -19,7 +19,8 @@ public struct CharacterPersonalityEngine: Sendable {
         let activeWarnings = warnings
             .filter { $0.isActive(at: analysis.analyzedAt) }
             .sorted { $0.level > $1.level }
-        let serious = (activeWarnings.first?.level ?? .green) >= .orange || analysis.theme == .stormy
+        // A likely thunderstorm later today makes the message serious even before it shows on the character.
+        let serious = (activeWarnings.first?.level ?? .green) >= .orange || analysis.outlookTheme == .stormy
         var s: [String] = []
 
         s.append(greeting(at: analysis.analyzedAt, timeZone: tz, serious: serious))
@@ -47,6 +48,9 @@ public struct CharacterPersonalityEngine: Sendable {
             s.append(rangeSentence)
         }
         s.append(contentsOf: precipitationSentences(analysis))
+        if analysis.briefingTime.looksAhead, let tomorrow = tomorrowSentence(analysis) {
+            s.append(tomorrow)
+        }
 
         if let wind = analysis.wind, wind.isStrong {
             s.append(windSentence(wind))
@@ -59,7 +63,8 @@ public struct CharacterPersonalityEngine: Sendable {
             s.append(clothing.briefingSentence)
         }
 
-        s.append(closing(theme: analysis.theme, serious: serious, precipitation: analysis.precipitation))
+        s.append(closing(theme: analysis.outlookTheme, serious: serious, precipitation: analysis.precipitation,
+                         briefingTime: analysis.briefingTime))
 
         let mood: CharacterMood = serious ? .warning : restingMood(for: analysis.theme)
         return Briefing(sentences: s, restingMood: mood, theme: analysis.theme, advice: advice(for: analysis))
@@ -100,7 +105,8 @@ public struct CharacterPersonalityEngine: Sendable {
         switch style {
         case .friendly: return "\(base)! Ben Pofuduk, havayı senin için kontrol ettim."
         case .playful: return "\(base)! Pofuduk bildiriyor, bulutlarla konuştum bile."
-        case .calm: return "\(base). Bugünün havasına birlikte bakalım."
+        case .calm: return hour >= 17 ? "\(base). Bu akşamın ve yarının havasına birlikte bakalım."
+                                      : "\(base). Bugünün havasına birlikte bakalım."
         }
     }
 
@@ -111,7 +117,57 @@ public struct CharacterPersonalityEngine: Sendable {
         return "\(place) şu an \(temp), hava \(condition)."
     }
 
+    /// Only the hours still ahead are worth telling: the whole day in the morning,
+    /// the rest of the day in the afternoon, tonight's low in the evening.
     func rangeSentence(_ a: WeatherAnalysis) -> String? {
+        let now = a.current.temperature
+        switch a.briefingTime {
+        case .morning:
+            return fullDayRangeSentence(a)
+        case .afternoon:
+            guard let lo = a.restOfDayLow, let hi = a.restOfDayHigh else { return nil }
+            if hi >= now + 2 {
+                return "Günün geri kalanında sıcaklık \(TurkishFormatting.temperature(hi)) kadar çıkabilir."
+            }
+            if lo <= now - 2 {
+                return "Akşama doğru sıcaklık \(TurkishFormatting.temperature(lo)) civarına düşecek."
+            }
+            return "Günün geri kalanında sıcaklık pek değişmeyecek."
+        case .evening, .night:
+            guard let lo = a.tonightLow else { return nil }
+            let when = a.briefingTime == .evening ? "Bu gece" : "Sabaha karşı"
+            if lo <= now - 2 {
+                return "\(when) sıcaklık \(TurkishFormatting.temperature(lo)) civarına düşecek."
+            }
+            return "\(when) sıcaklık \(TurkishFormatting.temperature(lo)) civarında olacak."
+        }
+    }
+
+    func tomorrowSentence(_ a: WeatherAnalysis) -> String? {
+        guard let t = a.tomorrow else { return nil }
+        let lo = TurkishFormatting.temperature(t.low).replacingOccurrences(of: " derece", with: "")
+        var sentence = Int(t.low.rounded()) == Int(t.high.rounded())
+            ? "Yarın sıcaklık \(TurkishFormatting.temperature(t.high)) civarında"
+            : "Yarın sıcaklık \(lo) ile \(TurkishFormatting.temperature(t.high)) arasında"
+        let noun: String
+        switch t.condition {
+        case .thunderstorm: noun = "gök gürültülü sağanak"
+        case .snow: noun = "kar"
+        case .sleet: noun = "karla karışık yağmur"
+        default: noun = "yağış"
+        }
+        let percent = t.precipitationProbability.map { ", ihtimali yüzde \($0)" } ?? ""
+        if t.precipitationLikely {
+            sentence += "; \(noun) bekleniyor\(percent)."
+        } else if t.precipitationPossible {
+            sentence += "; \(noun) ihtimali var ama kesin değil\(percent)."
+        } else {
+            sentence += ", yağış beklenmiyor."
+        }
+        return sentence
+    }
+
+    func fullDayRangeSentence(_ a: WeatherAnalysis) -> String? {
         guard let minT = a.minTemperature, let maxT = a.maxTemperature else { return nil }
         let lo = Int(minT.rounded()), hi = Int(maxT.rounded())
         if lo == hi { return "Gün boyunca sıcaklık \(TurkishFormatting.temperature(maxT)) civarında." }
@@ -125,7 +181,13 @@ public struct CharacterPersonalityEngine: Sendable {
     func precipitationSentences(_ a: WeatherAnalysis) -> [String] {
         let tz = a.place.timeZone
         guard let p = a.precipitation else {
-            return a.hasHourlyCoverage ? ["Bugün için yağış beklenmiyor."] : []
+            guard a.hasHourlyCoverage else { return [] }
+            switch a.briefingTime {
+            case .morning: return ["Bugün için yağış beklenmiyor."]
+            case .afternoon: return ["Günün geri kalanında yağış beklenmiyor."]
+            case .evening: return ["Bu akşam için yağış beklenmiyor."]
+            case .night: return ["Bu gece için yağış beklenmiyor."]
+            }
         }
         let start = TurkishFormatting.clockTime(p.start, timeZone: tz)
         let startsNow = p.start <= a.analyzedAt
@@ -176,9 +238,18 @@ public struct CharacterPersonalityEngine: Sendable {
         return sentence + ". Açık alanlarda dikkatli ol."
     }
 
-    func closing(theme: WeatherTheme, serious: Bool, precipitation: PrecipitationOutlook?) -> String {
+    func closing(theme: WeatherTheme, serious: Bool, precipitation: PrecipitationOutlook?,
+                 briefingTime: BriefingTime = .morning) -> String {
         if serious {
             return "Şakayı bir kenara bırakalım; lütfen dikkatli ol ve gereksiz yere dışarı çıkma."
+        }
+        // "Great day to go out" makes no sense once the day is over.
+        if briefingTime.looksAhead, theme == .sunny || theme == .cloudy {
+            switch style {
+            case .playful: return "Akşamın tadını çıkar, yarın yine bulutlarla konuşurum!"
+            case .calm: return "Keyifli bir akşam geçirmeni dilerim."
+            case .friendly: return "İyi akşamlar dilerim, yarın yine buradayım."
+            }
         }
         switch (theme, style) {
         case (.rainy, .playful): return "Şemsiyeni unutma, sonra ıslanıp beni suçlama!"
@@ -218,7 +289,7 @@ public struct CharacterPersonalityEngine: Sendable {
         }
         if a.wind?.isStrong == true { items.append("Rüzgâra karşı dikkatli ol") }
         if a.isHighUV { items.append("Güneş kremi ve şapka iyi fikir") }
-        if a.temperatureSwingIsNotable { items.append("Katmanlı giyin, gün içinde sıcaklık çok değişiyor") }
+        if a.temperatureSwingIsNotable, a.briefingTime == .morning { items.append("Katmanlı giyin, gün içinde sıcaklık çok değişiyor") }
         if a.feelsLikeIsNotable, a.current.feelsLike < a.current.temperature {
             items.append("Olduğundan serin hissedilebilir")
         }

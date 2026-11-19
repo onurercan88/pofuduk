@@ -157,7 +157,7 @@ public struct TravelWeatherSummaryEngine: Sendable {
         let theme = WeatherSummaryEngine.theme(
             current: CurrentWeather(time: first.date, temperature: first.maxTemperature, feelsLike: first.maxTemperature,
                                     condition: first.condition, humidity: 0, windSpeedKmh: 0),
-            precipitation: nil, wind: nil)
+            precipitation: nil, wind: nil, now: first.date)
         return TravelSummary(destination: dest, origin: origin?.place, days: rows, unavailableDays: missing, packing: packing,
                              briefing: Briefing(sentences: s, restingMood: .happy, theme: theme))
     }

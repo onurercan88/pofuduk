@@ -71,12 +71,12 @@ public struct MorningBriefingEngine: Sendable {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = tz
         let active = warnings.filter { $0.isActive(at: now) && $0.level > .green }.sorted { $0.level > $1.level }
-        let serious = (active.first?.level ?? .green) >= .orange || analysis.theme == .stormy
+        let serious = (active.first?.level ?? .green) >= .orange || analysis.outlookTheme == .stormy
         let p = analysis.precipitation
         var s: [String] = []
 
         s.append(serious ? "Günaydın." : "Günaydın!")
-        if !serious, p == nil, analysis.theme == .sunny || analysis.theme == .cloudy, analysis.wind?.isStrong != true {
+        if !serious, p == nil, analysis.outlookTheme == .sunny || analysis.outlookTheme == .cloudy, analysis.wind?.isStrong != true {
             s.append("Bugün senin için güzel bir gün olabilir.")
         }
         if snapshot.source == .demo { s.append("Şu an örnek verilerle konuşuyorum, bu gerçek bir tahmin değil.") }

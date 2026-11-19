@@ -22,13 +22,22 @@ final class CharacterPersonalityEngineTests: XCTestCase {
         XCTAssertTrue(b.fullText.contains("Saat 14.00 civarında yağmur başlaması bekleniyor"))
         XCTAssertTrue(b.fullText.contains("Orta şiddette"))
         XCTAssertTrue(b.fullText.contains("Şemsiye"))
-        XCTAssertEqual(b.theme, .rainy)
+        // 09.00 is still dry: the look shows now, the words cover the afternoon rain.
+        XCTAssertNotEqual(b.theme, .rainy)
+    }
+
+    func testLookFollowsTheWeatherNow() {
+        let at = TestClock.date(hour: 15)
+        let a = summary.analyze(MockWeatherData.snapshot(.stormy, now: at), now: at)
+        XCTAssertEqual(a.theme, .stormy)
+        let rain = summary.analyze(MockWeatherData.snapshot(.rainyAfternoon, now: at), now: at)
+        XCTAssertEqual(rain.theme, .rainy)
     }
 
     func testStormIsSeriousEvenInPlayfulStyle() {
+        // Storm expected from 12.00; at 09.00 the message is already serious.
         let b = briefing(.stormy, style: .playful)
         XCTAssertEqual(b.restingMood, .warning)
-        XCTAssertEqual(b.theme, .stormy)
         XCTAssertFalse(b.fullText.contains("suçlama"))
         XCTAssertTrue(b.fullText.contains("dikkatli"))
     }
@@ -77,6 +86,48 @@ final class CharacterPersonalityEngineTests: XCTestCase {
         let snap = MockWeatherData.snapshot(.sunny, now: now)
         let b = briefing(.sunny)
         XCTAssertTrue(b.fullText.contains(TurkishFormatting.temperature(snap.current.temperature)))
+    }
+
+    // MARK: - Time of day
+
+    private func briefing(_ scenario: MockWeatherData.Scenario, at hour: Int) -> Briefing {
+        let at = TestClock.date(hour: hour)
+        let a = summary.analyze(MockWeatherData.snapshot(scenario, now: at), now: at)
+        return CharacterPersonalityEngine().briefing(for: a)
+    }
+
+    func testMorningTellsTheWholeDay() {
+        let text = briefing(.sunny, at: 9).fullText
+        XCTAssertTrue(text.contains("Bugün sıcaklık"))
+        XCTAssertFalse(text.contains("Yarın"))
+    }
+
+    func testEveningSkipsTodaysRangeAndTellsTonightAndTomorrow() {
+        let b = briefing(.sunny, at: 17)
+        let text = b.fullText
+        XCTAssertFalse(text.contains("Bugün sıcaklık"), text)
+        XCTAssertTrue(text.contains("Bu gece sıcaklık"), text)
+        XCTAssertTrue(text.contains("Yarın sıcaklık"), text)
+        XCTAssertTrue(text.contains("Bu akşam için yağış beklenmiyor"), text)
+        XCTAssertFalse(text.contains("Dışarı çıkmak için"), text)
+        XCTAssertFalse(b.advice.contains { $0.contains("gün içinde") })
+    }
+
+    func testAfternoonTalksAboutTheRestOfTheDay() {
+        let text = briefing(.sunny, at: 14).fullText
+        XCTAssertFalse(text.contains("Bugün sıcaklık"), text)
+        XCTAssertTrue(text.contains("Günün geri kalanında") || text.contains("Akşama doğru"), text)
+        XCTAssertFalse(text.contains("Yarın"), text)
+    }
+
+    func testTomorrowRainIsTold() {
+        let at = TestClock.date(hour: 19)
+        var snap = MockWeatherData.snapshot(.sunny, now: at)
+        let tomorrow = TestClock.date(hour: 0, day: 15)
+        snap.daily = [DailyForecast(date: tomorrow, minTemperature: 9, maxTemperature: 14, condition: .rain,
+                                    precipitationProbability: 80, precipitationSumMm: 6)]
+        let text = CharacterPersonalityEngine().briefing(for: summary.analyze(snap, now: at)).fullText
+        XCTAssertTrue(text.contains("Yarın sıcaklık 9 ile 14 derece arasında; yağış bekleniyor, ihtimali yüzde 80."), text)
     }
 
     func testTurkishLocative() {

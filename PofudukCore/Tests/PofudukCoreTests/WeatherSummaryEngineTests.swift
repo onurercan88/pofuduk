@@ -26,7 +26,43 @@ final class WeatherSummaryEngineTests: XCTestCase {
         XCTAssertEqual(p.durationHours, 3)
         XCTAssertEqual(p.intensity, .light)
         XCTAssertTrue(p.isLikely)
+        // Dry now, rain at 14.00: the look stays dry, the wording knows about the rain.
+        XCTAssertEqual(a.theme, .sunny)
+        XCTAssertEqual(a.outlookTheme, .rainy)
+    }
+
+    private func cloudyNow(_ t: Date) -> CurrentWeather {
+        CurrentWeather(time: t, temperature: 15, feelsLike: 15, condition: .cloudy, humidity: 70, windSpeedKmh: 10)
+    }
+
+    func testCloudyNowWithRainLaterDoesNotLookRainy() {
+        let hourly = TestClock.hours { i, t in
+            let wet = (17...18).contains(i)
+            return HourlyForecast(time: t, temperature: 15, condition: wet ? .rain : .cloudy,
+                                  precipitationProbability: wet ? 85 : 10, precipitationMm: wet ? 2 : 0)
+        }
+        let a = engine.analyze(TestClock.snapshot(hourly: hourly, current: cloudyNow(now), now: now), now: now)
+        XCTAssertEqual(a.theme, .cloudy)
+        XCTAssertEqual(a.outlookTheme, .rainy)
+    }
+
+    func testRainWithinTheHourLooksRainy() {
+        let at = TestClock.date(hour: 13, minute: 30)
+        let hourly = TestClock.hours { i, t in
+            let wet = (14...16).contains(i)
+            return HourlyForecast(time: t, temperature: 15, condition: wet ? .rain : .cloudy,
+                                  precipitationProbability: wet ? 85 : 10, precipitationMm: wet ? 2 : 0)
+        }
+        let a = engine.analyze(TestClock.snapshot(hourly: hourly, current: cloudyNow(at), now: at), now: at)
         XCTAssertEqual(a.theme, .rainy)
+    }
+
+    func testOpenMeteoCurrentPrecipitationOverridesCloudyCode() {
+        XCTAssertEqual(OpenMeteoProvider.currentCondition(wmo: 3, precipitationMm: 1.2), .rain)
+        XCTAssertEqual(OpenMeteoProvider.currentCondition(wmo: 3, precipitationMm: 0.2), .drizzle)
+        XCTAssertEqual(OpenMeteoProvider.currentCondition(wmo: 3, precipitationMm: 0), .cloudy)
+        XCTAssertEqual(OpenMeteoProvider.currentCondition(wmo: 3, precipitationMm: nil), .cloudy)
+        XCTAssertEqual(OpenMeteoProvider.currentCondition(wmo: 95, precipitationMm: 4), .thunderstorm)
     }
 
     func testHeavyPrecipitationRequiresAmounts() {

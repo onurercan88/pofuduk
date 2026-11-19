@@ -22,7 +22,7 @@ public struct OpenMeteoProvider: WeatherProvider {
         c.queryItems = [
             .init(name: "latitude", value: String(format: "%.4f", place.coordinate.latitude)),
             .init(name: "longitude", value: String(format: "%.4f", place.coordinate.longitude)),
-            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m"),
+            .init(name: "current", value: "temperature_2m,apparent_temperature,relative_humidity_2m,is_day,weather_code,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m"),
             .init(name: "hourly", value: "temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,uv_index"),
             .init(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max,sunrise,sunset"),
             .init(name: "timezone", value: place.timeZoneIdentifier),
@@ -89,13 +89,21 @@ public struct OpenMeteoProvider: WeatherProvider {
 
         let current = CurrentWeather(
             time: curTime, temperature: temp, feelsLike: cur.apparent_temperature ?? temp,
-            condition: condition(wmo: cur.weather_code), humidity: Int((cur.relative_humidity_2m ?? 0).rounded()),
+            condition: currentCondition(wmo: cur.weather_code, precipitationMm: cur.precipitation), humidity: Int((cur.relative_humidity_2m ?? 0).rounded()),
             windSpeedKmh: cur.wind_speed_10m ?? 0, windGustKmh: cur.wind_gusts_10m,
             windDirectionDegrees: cur.wind_direction_10m.map { Int($0.rounded()) },
             uvIndex: currentUV, isDay: (cur.is_day ?? 1) == 1)
 
         return WeatherSnapshot(place: place, current: current, hourly: hourly, daily: daily, source: .openMeteo,
                                retrievedAt: retrievedAt, expiresAt: retrievedAt.addingTimeInterval(lifetime))
+    }
+
+    /// The current weather code can say "cloudy" while the model's current precipitation amount
+    /// (sum of the preceding 15 minutes) shows it is raining. Measured amount wins over the code.
+    static func currentCondition(wmo code: Int?, precipitationMm: Double?) -> WeatherCondition {
+        let fromCode = condition(wmo: code)
+        guard !fromCode.isPrecipitation, let mm = precipitationMm, mm >= 0.1 else { return fromCode }
+        return mm < 0.5 ? .drizzle : .rain
     }
 
     /// WMO weather interpretation codes.
@@ -126,6 +134,7 @@ struct OpenMeteoResponse: Decodable {
         var relative_humidity_2m: Double?
         var is_day: Int?
         var weather_code: Int?
+        var precipitation: Double?
         var wind_speed_10m: Double?
         var wind_gusts_10m: Double?
         var wind_direction_10m: Double?

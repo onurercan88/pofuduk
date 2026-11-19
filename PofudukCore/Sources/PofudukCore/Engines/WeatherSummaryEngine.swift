@@ -31,6 +31,40 @@ public struct WindOutlook: Equatable, Sendable {
     public var isStrong: Bool
 }
 
+/// Part of the day the briefing is given in. Decides which hours are worth talking about.
+public enum BriefingTime: String, Sendable, Equatable {
+    /// 00.00–12.59: the whole day is still ahead.
+    case morning
+    /// 13.00–16.59: talk about the rest of the day.
+    case afternoon
+    /// 17.00–21.59: talk about tonight and tomorrow.
+    case evening
+    /// 22.00–23.59: talk about the night and tomorrow.
+    case night
+
+    public init(hour: Int) {
+        switch hour {
+        case 13..<17: self = .afternoon
+        case 17..<22: self = .evening
+        case 22...23: self = .night
+        default: self = .morning
+        }
+    }
+
+    public var looksAhead: Bool { self == .evening || self == .night }
+}
+
+public struct TomorrowOutlook: Equatable, Sendable {
+    public var low: Double
+    public var high: Double
+    public var condition: WeatherCondition
+    public var precipitationProbability: Int?
+    /// At or above the "likely" threshold (with an amount, if the source gives one).
+    public var precipitationLikely: Bool
+    /// Between the "possible" and "likely" thresholds.
+    public var precipitationPossible: Bool
+}
+
 public struct WeatherAnalysis: Equatable, Sendable {
     public var place: Place
     public var source: WeatherDataSource
@@ -52,7 +86,18 @@ public struct WeatherAnalysis: Equatable, Sendable {
     public var uvMax: Double?
     public var isHighUV: Bool
 
+    public var briefingTime: BriefingTime
+    /// Lowest / highest temperature from the current hour to the end of today.
+    public var restOfDayLow: Double?
+    public var restOfDayHigh: Double?
+    /// Lowest temperature from now until 07.00 tomorrow (evening and night briefings).
+    public var tonightLow: Double?
+    public var tomorrow: TomorrowOutlook?
+
+    /// Character look: the weather now (and precipitation starting within the hour).
     public var theme: WeatherTheme
+    /// The rest of today (precipitation at any later hour counts). Drives wording, not the look.
+    public var outlookTheme: WeatherTheme
 }
 
 /// Turns a snapshot into facts. Produces no wording; that is the personality engine's job.
@@ -93,7 +138,16 @@ public struct WeatherSummaryEngine: Sendable {
         let lastHourOfDay = dayEnd.addingTimeInterval(-3600)
         let coverage = !remaining.isEmpty && (remaining.last!.time >= lastHourOfDay)
 
-        let theme = Self.theme(current: current, precipitation: precipitation, wind: wind)
+        let theme = Self.theme(current: current, precipitation: precipitation, wind: wind, now: now)
+        let outlookTheme = Self.theme(current: current, precipitation: precipitation, wind: wind, now: now,
+                                      leadTime: .infinity)
+
+        let briefingTime = BriefingTime(hour: calendar.component(.hour, from: now))
+        let remainingTemps = remaining.map(\.temperature) + [current.temperature]
+        let tonightEnd = calendar.date(bySettingHour: 7, minute: 0, second: 0, of: dayEnd) ?? dayEnd
+        let tonightTemps = snapshot.hourly.filter { $0.time >= hourStart && $0.time < tonightEnd }.map(\.temperature)
+            + [current.temperature]
+        let tomorrow = tomorrowOutlook(snapshot.daily.first { calendar.isDate($0.date, inSameDayAs: dayEnd) })
 
         return WeatherAnalysis(
             place: snapshot.place,
@@ -111,8 +165,28 @@ public struct WeatherSummaryEngine: Sendable {
             wind: wind,
             uvMax: uvMax,
             isHighUV: (uvMax ?? 0) >= thresholds.highUVIndex,
-            theme: theme
+            briefingTime: briefingTime,
+            restOfDayLow: remaining.isEmpty ? nil : remainingTemps.min(),
+            restOfDayHigh: remaining.isEmpty ? nil : remainingTemps.max(),
+            tonightLow: tonightTemps.count > 1 ? tonightTemps.min() : nil,
+            tomorrow: tomorrow,
+            theme: theme,
+            outlookTheme: outlookTheme
         )
+    }
+
+    // MARK: - Tomorrow
+
+    func tomorrowOutlook(_ day: DailyForecast?) -> TomorrowOutlook? {
+        guard let day else { return nil }
+        let p = day.precipitationProbability ?? (day.condition.isPrecipitation ? thresholds.likelyPrecipitationProbability : 0)
+        // Amount given and ~0 → the probability alone does not make it a wet day.
+        let dryByAmount = (day.precipitationSumMm.map { $0 < thresholds.minimumWetHourMm } ?? false) && !day.condition.isPrecipitation
+        let likely = !dryByAmount && p >= thresholds.likelyPrecipitationProbability
+        let possible = !dryByAmount && !likely && p >= thresholds.possiblePrecipitationProbability
+        return TomorrowOutlook(low: day.minTemperature, high: day.maxTemperature, condition: day.condition,
+                               precipitationProbability: day.precipitationProbability,
+                               precipitationLikely: likely, precipitationPossible: possible)
     }
 
     // MARK: - Precipitation
@@ -213,15 +287,22 @@ public struct WeatherSummaryEngine: Sendable {
 
     // MARK: - Theme
 
-    static func theme(current: CurrentWeather, precipitation: PrecipitationOutlook?, wind: WindOutlook?) -> WeatherTheme {
-        if current.condition == .thunderstorm || (precipitation?.kind == .thunderstorm && precipitation?.isLikely == true) {
+    /// How soon forecast precipitation must start to change the character's look.
+    /// The look shows the weather *now*; rain expected later is told in words, not shown.
+    static let themePrecipitationLeadTime: TimeInterval = 60 * 60
+
+    static func theme(current: CurrentWeather, precipitation: PrecipitationOutlook?, wind: WindOutlook?,
+                      now: Date, leadTime: TimeInterval = themePrecipitationLeadTime) -> WeatherTheme {
+        let imminent = precipitation.flatMap { p in
+            p.isLikely && p.start.timeIntervalSince(now) <= leadTime ? p : nil
+        }
+        if current.condition == .thunderstorm || imminent?.kind == .thunderstorm {
             return .stormy
         }
-        if current.condition == .snow || current.condition == .sleet
-            || (precipitation?.kind == .snow && precipitation?.isLikely == true) {
+        if current.condition == .snow || current.condition == .sleet || imminent?.kind == .snow {
             return .snowy
         }
-        if current.condition.isPrecipitation || precipitation?.isLikely == true { return .rainy }
+        if current.condition.isPrecipitation || imminent != nil { return .rainy }
         if wind?.isStrong == true || current.condition == .windy { return .windy }
         if !current.isDay { return .night }
         switch current.condition {

@@ -50,7 +50,9 @@ final class SpeechService: NSObject, SpeechServicing {
     private var voice: AVSpeechSynthesisVoice?
     private var interruptionObserver: NSObjectProtocol?
 
-    static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 0.98
+    /// Device testing: the system default sounded slow in Turkish; ~7% faster is close to everyday speech.
+    /// The settings slider still scales this (0.8×–1.25×).
+    static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 1.07
 
     override init() {
         voice = Self.preferredTurkishVoice()
