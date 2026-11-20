@@ -39,6 +39,7 @@ struct ClothingDetailView: View {
     let recommendationFor: (Int) -> ClothingRecommendation?
     let onSpeak: (ClothingRecommendation) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var dayOffset = 0
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: 12)]
@@ -54,8 +55,12 @@ struct ClothingDetailView: View {
                     .pickerStyle(.segmented)
 
                     if let rec = recommendationFor(dayOffset) {
-                        HStack(alignment: .center, spacing: 12) {
-                            CharacterView(appearance: CharacterAppearance(mood: .happy, theme: theme), size: 90)
+                        let layout = typeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+                        layout {
+                            CharacterView(appearance: CharacterAppearance(mood: .happy, theme: theme), size: 90,
+                                          effectsBleed: false)
                                 .frame(width: 110, height: 110)
                             Text(rec.summary)
                                 .font(PofudukFont.body).foregroundStyle(PofudukColor.ink)

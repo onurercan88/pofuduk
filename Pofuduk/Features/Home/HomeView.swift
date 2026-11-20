@@ -8,6 +8,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     /// Hero temperature scales with Dynamic Type.
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 72
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ZStack {
@@ -139,7 +140,10 @@ struct HomeView: View {
     private var hero: some View {
         VStack(spacing: 0) {
             if let current = viewModel.snapshot?.current {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                let layout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: 4))
+                    : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 10))
+                layout {
                     Text(TurkishFormatting.shortTemperature(current.temperature))
                         .font(.system(size: heroSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(PofudukColor.ink)

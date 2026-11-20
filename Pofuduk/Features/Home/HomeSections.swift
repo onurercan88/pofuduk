@@ -4,49 +4,67 @@ import WeatherKit
 
 struct HomeHeader: View {
     let viewModel: HomeViewModel
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                if let place = viewModel.snapshot?.place {
-                    Button { viewModel.openLocationPicker() } label: {
-                        Label(place.displayName, systemImage: place.source == .gps ? "location.fill" : "mappin.and.ellipse")
-                            .font(PofudukFont.title)
-                            .foregroundStyle(PofudukColor.ink)
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(viewModel.isDemoMode ? "" : "Konumu değiştir")
-                    TimelineView(.everyMinute) { context in
-                        let date = viewModel.headerDate(context.date)
-                        Text("\(TurkishFormatting.longDate(date, timeZone: place.timeZone)) · \(TurkishFormatting.clockTime(date, timeZone: place.timeZone))")
-                            .font(PofudukFont.caption)
-                            .foregroundStyle(PofudukColor.inkSecondary)
-                    }
-                } else {
-                    Text("Pofuduk").font(PofudukFont.title).foregroundStyle(PofudukColor.ink)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack { Spacer(); buttons }
+                    info
                 }
-                if viewModel.isDemo && !viewModel.hidesDemoChrome {
-                    Badge(text: "Örnek veri — gerçek tahmin değil", systemImage: "info.circle")
-                        .padding(.top, 4)
-                }
-                if viewModel.isApproximateLocation {
-                    Badge(text: "Yaklaşık konum (IP)", systemImage: "network")
-                        .padding(.top, 4)
-                }
-            }
-            Spacer()
-            HStack(spacing: 8) {
-                RoundIconButton(systemImage: "gearshape.fill", label: "Ayarlar") {
-                    viewModel.showSettings = true
-                }
-                RoundIconButton(systemImage: viewModel.isSoundOn ? "speaker.wave.2.fill" : "speaker.slash.fill",
-                                label: viewModel.isSoundOn ? "Sesi kapat" : "Sesi aç") {
-                    viewModel.toggleSound()
+            } else {
+                HStack(alignment: .top) {
+                    info
+                    Spacer()
+                    buttons
                 }
             }
         }
         .padding(.top, 8)
+    }
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let place = viewModel.snapshot?.place {
+                Button { viewModel.openLocationPicker() } label: {
+                    Label(place.displayName, systemImage: place.source == .gps ? "location.fill" : "mappin.and.ellipse")
+                        .font(PofudukFont.title)
+                        .foregroundStyle(PofudukColor.ink)
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(viewModel.isDemoMode ? "" : "Konumu değiştir")
+                TimelineView(.everyMinute) { context in
+                    let date = viewModel.headerDate(context.date)
+                    Text("\(TurkishFormatting.longDate(date, timeZone: place.timeZone)) · \(TurkishFormatting.clockTime(date, timeZone: place.timeZone))")
+                        .font(PofudukFont.caption)
+                        .foregroundStyle(PofudukColor.inkSecondary)
+                }
+            } else {
+                Text("Pofuduk").font(PofudukFont.title).foregroundStyle(PofudukColor.ink)
+            }
+            if viewModel.isDemo && !viewModel.hidesDemoChrome {
+                Badge(text: "Örnek veri — gerçek tahmin değil", systemImage: "info.circle")
+                    .padding(.top, 4)
+            }
+            if viewModel.isApproximateLocation {
+                Badge(text: "Yaklaşık konum (IP)", systemImage: "network")
+                    .padding(.top, 4)
+            }
+        }
+    }
+
+    private var buttons: some View {
+        HStack(spacing: 8) {
+            RoundIconButton(systemImage: "gearshape.fill", label: "Ayarlar") {
+                viewModel.showSettings = true
+            }
+            RoundIconButton(systemImage: viewModel.isSoundOn ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                            label: viewModel.isSoundOn ? "Sesi kapat" : "Sesi aç") {
+                viewModel.toggleSound()
+            }
+        }
     }
 }
 

@@ -6,25 +6,30 @@ import PofudukCore
 struct CharacterView: View {
     let appearance: CharacterAppearance
     var size: CGFloat = 220
+    /// true: rain/snow/sun spill around the character (home). false: kept inside `size` (small inline uses).
+    var effectsBleed = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // 30 fps is visually smooth for this soft character and halves CPU/battery cost vs 60 fps.
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
-            ZStack {
-                WeatherEffectsView(theme: appearance.theme, time: t)
-                    .frame(width: size * 1.7, height: size * 1.35)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                // Drawn parts (incl. decorative "z" letters) are hidden; the container carries the description.
-                // Reduce Motion: freeze at a moment with open eyes (t = 0 falls inside a blink).
-                CharacterFigure(appearance: appearance, time: reduceMotion ? CharacterFigure.stillTime : t)
-                    .frame(width: 200, height: 200)
-                    .scaleEffect(size / 200)
-                    .frame(width: size, height: size)
-                    .accessibilityHidden(true)
-            }
+            // Drawn parts (incl. decorative "z" letters) are hidden; the container carries the description.
+            // Reduce Motion: freeze at a moment with open eyes (t = 0 falls inside a blink).
+            CharacterFigure(appearance: appearance, time: reduceMotion ? CharacterFigure.stillTime : t)
+                .frame(width: 200, height: 200)
+                .scaleEffect(size / 200)
+                .frame(width: size, height: size)
+                .accessibilityHidden(true)
+                // A background never changes the view's size: the effects may draw wider than the screen
+                // allows without pushing the page sideways (that clipped both edges on iPhone SE / mini).
+                .background {
+                    WeatherEffectsView(theme: appearance.theme, time: t)
+                        .frame(width: size * (effectsBleed ? 1.7 : 1), height: size * (effectsBleed ? 1.35 : 1))
+                        .clipped()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
