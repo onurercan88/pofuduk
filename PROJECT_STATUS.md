@@ -158,6 +158,11 @@ _Last updated: 2026-11-19_
 - [x] App Store Connect: description, keywords, promo text, URLs, review notes, subtitle, categories (Weather/Lifestyle), content rights, age rating 4+, free, Türkiye only, App Privacy "Data Not Collected" (published)
 - [x] Screenshots attached (6.9" slot; required 6.1"/6.3" slot uses them scaled), copyright + review contact (owner), build 7 attached, age rating incl. new Shared Location/Dating questions, release: automatic after approval
 - [x] Submitted for App Review 2026-11-19 (1.0.0 build 7) — "Waiting for Review"
+
+### Device layout check (2026-11-20)
+- [x] `device-matrix.yml`: 6 iPhone sizes × normal/XXXL/AX5; no crashes or faults; TestFlight build 7: 0 crashes
+- [x] Fixed: page clipped on both edges on 375 pt iPhones (SE, mini); header/hero/clothing at accessibility text sizes; lightning flash showed a box on wide screens
+- [ ] Ship the layout fixes in 1.0.1 (1.0.0 build 7 under review has the clipping on SE/mini)
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations

@@ -64,7 +64,12 @@ struct WeatherEffectsView: View {
         guard phase < 0.22 else { return }
         let flicker = phase < 0.08 || (phase > 0.14 && phase < 0.2)
         guard flicker else { return }
-        ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white.opacity(0.25)))
+        // Soft glow that fades out before the edges: a flat flash showed the effect area as a visible box
+        // on screens wider than it (e.g. iPhone Pro Max).
+        let center = CGPoint(x: size.width / 2, y: size.height * 0.4)
+        ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                 with: .radialGradient(Gradient(colors: [.white.opacity(0.3), .white.opacity(0)]),
+                                       center: center, startRadius: 0, endRadius: min(size.width, size.height) * 0.5))
         let x = size.width * 0.18
         var bolt = Path()
         bolt.move(to: CGPoint(x: x + 14, y: 10))
