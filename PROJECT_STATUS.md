@@ -162,7 +162,7 @@ _Last updated: 2026-11-19_
 ### Device layout check (2026-11-20)
 - [x] `device-matrix.yml`: 6 iPhone sizes × normal/XXXL/AX5; no crashes or faults; TestFlight build 7: 0 crashes
 - [x] Fixed: page clipped on both edges on 375 pt iPhones (SE, mini); header/hero/clothing at accessibility text sizes; lightning flash showed a box on wide screens
-- [ ] Ship the layout fixes in 1.0.1 (1.0.0 build 7 under review has the clipping on SE/mini)
+- [ ] Ship the layout fixes in 1.0.1 (decided 2026-11-21): version bumped, TestFlight build uploaded for device check; once 1.0.0 is approved, create version 1.0.1 in App Store Connect (same metadata/screenshots carry over), attach the 1.0.1 build, "What's New" text, submit
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations
