@@ -21,8 +21,10 @@ struct CharacterView: View {
                 .scaleEffect(size / 200)
                 .frame(width: size, height: size)
                 .accessibilityHidden(true)
-                // A background never changes the view's size: the effects may draw wider than the screen
-                // allows without pushing the page sideways (that clipped both edges on iPhone SE / mini).
+                // Vertical room for the effects stays part of the layout (unchanged spacing); only their
+                // width is left out, so they can never push the page sideways (that clipped both edges on
+                // 375 pt iPhones: SE, mini).
+                .frame(height: size * (effectsBleed ? 1.35 : 1))
                 .background {
                     WeatherEffectsView(theme: appearance.theme, time: t)
                         .frame(width: size * (effectsBleed ? 1.7 : 1), height: size * (effectsBleed ? 1.35 : 1))
