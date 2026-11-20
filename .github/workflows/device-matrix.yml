@@ -49,9 +49,13 @@ jobs:
               xcrun simctl ui "$UDID" content_size "$size"
               xcrun simctl terminate "$UDID" com.pofuduk.app 2>/dev/null || true
               xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.soundOn NO -pofuduk.fixedHour 11 "$@" > /dev/null
-              sleep 7
+              sleep 10
               xcrun simctl io "$UDID" screenshot "matrix/$SLUG-$name.png" 2>/dev/null
             }
+            # Warm-up launch: the first run compiles GPU pipelines and can take far longer than later ones
+            # (blank screenshots on slow runners otherwise).
+            xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.soundOn NO -pofuduk.demoScenario sunny > /dev/null
+            sleep 25
             shot 1-sunny light large -pofuduk.demoScenario sunny
             shot 2-storm-dark dark large -pofuduk.demoScenario stormy
             shot 3-clothing light large -pofuduk.demoScenario rainyAfternoon -pofuduk.openClothing YES
