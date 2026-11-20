@@ -1,0 +1,103 @@
+name: Device matrix screenshots
+# Manual only: layout check across iPhone sizes (smallest → largest) and the largest text sizes.
+# Demo data (badge visible, like a real demo run), fixed clock, sound off for deterministic subtitles.
+# Output: one contact sheet per device + all raw screenshots (artifact `device-matrix`).
+on:
+  workflow_dispatch:
+
+jobs:
+  matrix:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build (Debug, simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | grep -E "error:|\*\* BUILD" | head -n 50
+      - name: Shoot every device
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/Pofuduk.app
+          RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "
+          import json, sys
+          rs = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS']
+          print(max(rs, key=lambda r: [int(x) for x in r['version'].split('.')])['identifier'])")
+          echo "Runtime: $RUNTIME"
+          xcrun simctl list devicetypes | grep -E "iPhone" | sed 's/^/  /'
+          mkdir -p matrix
+          # Smallest to largest point widths: 375 (SE, mini) → 390/393 → 402 → 420 → 440.
+          for DEV in "iPhone SE (3rd generation)" "iPhone 13 mini" "iPhone 16e" "iPhone 17" "iPhone Air" "iPhone 17 Pro Max"; do
+            TYPE=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          name = sys.argv[1]
+          print(next((d['identifier'] for d in json.load(sys.stdin)['devicetypes'] if d['name'] == name), ''))" "$DEV")
+            if [ -z "$TYPE" ]; then echo "::warning::device type not available: $DEV"; continue; fi
+            UDID=$(xcrun simctl create "matrix-$DEV" "$TYPE" "$RUNTIME" 2>/dev/null) || { echo "::warning::cannot create $DEV on $RUNTIME"; continue; }
+            SLUG=$(echo "$DEV" | tr -cd '[:alnum:]')
+            echo "== $DEV ($UDID)"
+            xcrun simctl boot "$UDID"
+            xcrun simctl bootstatus "$UDID" -b > /dev/null
+            xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+            xcrun simctl install "$UDID" "$APP"
+            shot() { # name appearance contentSize args...
+              local name=$1 look=$2 size=$3; shift 3
+              xcrun simctl ui "$UDID" appearance "$look"
+              xcrun simctl ui "$UDID" content_size "$size"
+              xcrun simctl terminate "$UDID" com.pofuduk.app 2>/dev/null || true
+              xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.soundOn NO -pofuduk.fixedHour 11 "$@" > /dev/null
+              sleep 7
+              xcrun simctl io "$UDID" screenshot "matrix/$SLUG-$name.png" 2>/dev/null
+            }
+            shot 1-sunny light large -pofuduk.demoScenario sunny
+            shot 2-storm-dark dark large -pofuduk.demoScenario stormy
+            shot 3-clothing light large -pofuduk.demoScenario rainyAfternoon -pofuduk.openClothing YES
+            shot 4-settings light large -pofuduk.demoScenario sunny -pofuduk.openSettings YES
+            shot 5-sunny-xxxl light extra-extra-extra-large -pofuduk.demoScenario sunny
+            shot 6-sunny-ax5 light accessibility-extra-extra-extra-large -pofuduk.demoScenario sunny
+            shot 7-clothing-ax5 light accessibility-extra-extra-extra-large -pofuduk.demoScenario rainyAfternoon -pofuduk.openClothing YES
+            # Any crash during the run shows up here.
+            xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+              --predicate 'process == "Pofuduk" AND (messageType == fault OR eventMessage CONTAINS[c] "fatal")' \
+              > "matrix/$SLUG-faults.txt" 2>/dev/null || true
+            ls ~/Library/Logs/DiagnosticReports 2>/dev/null | grep -i pofuduk > "matrix/$SLUG-crashes.txt" || true
+            xcrun simctl shutdown "$UDID"
+            xcrun simctl delete "$UDID"
+          done
+          ls matrix | head -n 100
+      - name: Contact sheets (one per device)
+        run: |
+          python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import glob, os, collections
+          from PIL import Image, ImageDraw
+          groups = collections.defaultdict(list)
+          for p in sorted(glob.glob('matrix/*.png')):
+              groups[os.path.basename(p).split('-')[0]].append(p)
+          os.makedirs('sheets', exist_ok=True)
+          for dev, paths in groups.items():
+              thumbs = []
+              for p in paths:
+                  im = Image.open(p).convert('RGB')
+                  w = 300
+                  thumbs.append((os.path.basename(p)[len(dev) + 1:-4], im.resize((w, int(im.height * w / im.width)))))
+              h = max(t.height for _, t in thumbs) + 24
+              sheet = Image.new('RGB', (len(thumbs) * 310, h), 'white')
+              d = ImageDraw.Draw(sheet)
+              for i, (label, t) in enumerate(thumbs):
+                  sheet.paste(t, (i * 310, 24))
+                  d.text((i * 310 + 4, 4), label, fill='black')
+              sheet.save(f'sheets/{dev}.jpg', quality=85)
+              print(dev, len(thumbs), sheet.size)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-matrix
+          path: |
+            sheets/
+            matrix/
+          retention-days: 14
