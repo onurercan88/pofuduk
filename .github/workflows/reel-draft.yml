@@ -20,7 +20,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO 2>&1 \
             | grep -E "error:|\*\* BUILD" | head -n 50
       - name: Record scenes
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           # Job control: without it, bash makes background jobs ignore SIGINT, so recordVideo never stops.
           set -m
@@ -42,7 +42,17 @@ jobs:
           xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.demoScenario sunny -pofuduk.soundOn NO > /dev/null
           sleep 25
           mkdir -p raw
-          rec() { # name settle seconds args...
+          rec() { # name settle seconds args... — retried when the recording is missing or tiny (slow runners)
+            for attempt in 1 2 3; do
+              rec_once "$@"
+              local size=$(stat -f%z "raw/$1.mov" 2>/dev/null || echo 0)
+              [ "$size" -gt 500000 ] && return 0
+              echo "$(date +%T) $1: recording too small ($size bytes), retry $attempt"
+              sleep 5
+            done
+            echo "::warning::$1 could not be recorded"
+          }
+          rec_once() {
             local name=$1 settle=$2 secs=$3; shift 3
             echo "$(date +%T) $name: launch"
             xcrun simctl terminate "$UDID" com.pofuduk.app 2>/dev/null || true
