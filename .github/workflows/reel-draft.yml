@@ -143,8 +143,8 @@ jobs:
             local dur=$(python3 -c "print(round(max(float('$d') + 0.7, 3.2), 2))")
             ffmpeg -loglevel error -y \
               -f lavfi -i "color=c=$bg:s=1080x1920:r=30:d=$dur" \
-              -ss 0.3 -i "raw/$n.mov" -i "titles/$n.png" -i "voice/$n.wav" \
-              -filter_complex "[1:v]scale=-2:1500,pad=iw+20:ih+20:10:10:color=0x1B1C2E[ph];[0:v][ph]overlay=(W-w)/2:370:shortest=0[v1];[v1][2:v]overlay=0:170[v]" \
+              -i "raw/$n.mov" -i "titles/$n.png" -i "voice/$n.wav" \
+              -filter_complex "[1:v]setpts=PTS-STARTPTS,fps=30,scale=-2:1500,pad=iw+20:ih+20:10:10:color=0x1B1C2E[ph];[0:v][ph]overlay=(W-w)/2:370:shortest=0[v1];[v1][2:v]overlay=0:170[v]" \
               -map "[v]" -map 3:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 "clips/$n.mp4"
             echo "$n ${dur}s"
           }
