@@ -245,6 +245,20 @@ final class HomeViewModel {
         // CI screenshots: `-pofuduk.openClothing YES`
         if defaults.bool(forKey: "pofuduk.openClothing"), clothingToday != nil { showClothing = true }
         if defaults.bool(forKey: "pofuduk.openSettings") { showSettings = true }
+        // Promo recordings (reel-draft.yml): `-pofuduk.ask "Yarın hava nasıl?"` asks right after the briefing
+        // starts; `-pofuduk.autoTap YES` taps the character every 2.2 s (sound off, so taps react, not pause).
+        if let question = defaults.string(forKey: "pofuduk.ask"), !question.isEmpty {
+            try? await Task.sleep(for: .seconds(1.5))
+            await conversation.ask(question)
+        }
+        if defaults.bool(forKey: "pofuduk.autoTap") {
+            Task { [weak self] in
+                for _ in 0..<20 {
+                    try? await Task.sleep(for: .seconds(2.2))
+                    self?.tapCharacter()
+                }
+            }
+        }
         #endif
     }
 

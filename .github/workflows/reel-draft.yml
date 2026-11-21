@@ -1,0 +1,138 @@
+name: Instagram Reel draft
+# Manual only: draft 9:16 promo Reel from real app footage (simulator, demo data) + Pofuduk lines voiced by the
+# macOS Turkish voice (pitched up a little), on-screen titles and an end card. Artifact `reel-draft`.
+on:
+  workflow_dispatch:
+
+jobs:
+  reel:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: brew install xcodegen ffmpeg > /dev/null
+      - name: Build (Debug, simulator)
+        run: |
+          set -o pipefail
+          xcodegen generate
+          xcodebuild build -project Pofuduk.xcodeproj -scheme Pofuduk -derivedDataPath build \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO 2>&1 \
+            | grep -E "error:|\*\* BUILD" | head -n 50
+      - name: Record scenes
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/Pofuduk.app
+          RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "
+          import json, sys
+          rs = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS']
+          print(max(rs, key=lambda r: [int(x) for x in r['version'].split('.')])['identifier'])")
+          TYPE=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          print(next(d['identifier'] for d in json.load(sys.stdin)['devicetypes'] if d['name'] == 'iPhone 17 Pro'))")
+          UDID=$(xcrun simctl create reel "$TYPE" "$RUNTIME")
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"; xcrun simctl bootstatus "$UDID" -b > /dev/null
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --batteryState charged --cellularBars 4 --wifiBars 3
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl install "$UDID" "$APP"
+          # Warm-up: first launch compiles GPU pipelines (slow on CI).
+          xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.demoScenario sunny -pofuduk.soundOn NO > /dev/null
+          sleep 25
+          mkdir -p raw
+          rec() { # name settle seconds args...
+            local name=$1 settle=$2 secs=$3; shift 3
+            xcrun simctl terminate "$UDID" com.pofuduk.app 2>/dev/null || true
+            xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.storeScreenshots YES "$@" > /dev/null
+            sleep "$settle"
+            xcrun simctl io "$UDID" recordVideo --codec=h264 --force "raw/$name.mov" &
+            local pid=$!
+            sleep "$secs"
+            kill -INT $pid; wait $pid || true
+          }
+          rec 1-sunny 4 7 -pofuduk.demoScenario sunny -pofuduk.fixedHour 11
+          rec 2-rain 4 7 -pofuduk.demoScenario rainyAfternoon -pofuduk.fixedHour 15
+          rec 3-clothing 6 6 -pofuduk.demoScenario rainyAfternoon -pofuduk.fixedHour 15 -pofuduk.openClothing YES
+          rec 4-ask 4 8 -pofuduk.demoScenario sunny -pofuduk.fixedHour 11 -pofuduk.ask "Yarın hava nasıl?"
+          rec 5-tap 4 7 -pofuduk.demoScenario sunny -pofuduk.fixedHour 11 -pofuduk.soundOn NO -pofuduk.autoTap YES
+          ls -la raw
+      - name: Voice lines (macOS Turkish voice)
+        run: |
+          say -v '?' | grep -i "tr_TR" || echo "::warning::no tr_TR voice installed"
+          VOICE=$(say -v '?' | awk '/tr_TR/ {print $1; exit}')
+          echo "Voice: ${VOICE:-none}"
+          mkdir -p voice
+          line() { # name text
+            if [ -n "$VOICE" ]; then
+              say -v "$VOICE" -r 175 -o "voice/$1.aiff" "$2"
+              # Slightly higher, friendlier voice (Pofuduk speaks at pitch 1.12 in the app).
+              local sr=$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "voice/$1.aiff")
+              ffmpeg -loglevel error -y -i "voice/$1.aiff" -af "asetrate=${sr}*1.1,aresample=44100,atempo=0.95" "voice/$1.wav"
+            else
+              ffmpeg -loglevel error -y -f lavfi -i anullsrc=r=44100:cl=mono -t 2.5 "voice/$1.wav"
+            fi
+          }
+          line 1-sunny "Merhaba, ben Pofuduk! Havayı sana ben anlatırım."
+          line 2-rain "Yağmur kaçta başlıyor? Saatiyle söylerim."
+          line 3-clothing "Ne giyeceğini de söylerim, nedenleriyle."
+          line 4-ask "Bir şey mi merak ettin? Sor bakalım!"
+          line 5-tap "Bana dokunursan kıkırdarım. Hi hi hi!"
+          line 6-end "Pofuduk. App Store'da ücretsiz!"
+          for f in voice/*.wav; do echo "$f $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f")"; done
+      - name: Edit 1080x1920 Reel
+        run: |
+          FONT="/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+          mkdir -p clips titles
+          printf '%s' "Hava durumunu sana anlatan bulut" > titles/1-sunny.txt
+          printf '%s' "Yağmur saatini söyler" > titles/2-rain.txt
+          printf '%s' "Ne giyeceğini söyler" > titles/3-clothing.txt
+          printf '%s' "Sor, cevaplasın" > titles/4-ask.txt
+          printf '%s' "Dokun, kıkırdasın" > titles/5-tap.txt
+          scene() { # name bgcolor
+            local n=$1 bg=$2
+            local d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "voice/$n.wav")
+            local dur=$(python3 -c "print(round(max(float('$d') + 0.7, 3.2), 2))")
+            ffmpeg -loglevel error -y \
+              -f lavfi -i "color=c=$bg:s=1080x1920:r=30:d=$dur" \
+              -ss 0.3 -i "raw/$n.mov" -i "voice/$n.wav" \
+              -filter_complex "[1:v]scale=-2:1500,pad=iw+20:ih+20:10:10:color=0x1B1C2E[ph];\
+          [0:v][ph]overlay=(W-w)/2:370:shortest=0[v1];\
+          [v1]drawtext=fontfile='$FONT':textfile=titles/$n.txt:fontsize=68:fontcolor=0x26284A:x=(w-text_w)/2:y=230[v]" \
+              -map "[v]" -map 2:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 "clips/$n.mp4"
+            echo "$n ${dur}s"
+          }
+          scene 1-sunny 0xFFE7B8
+          scene 2-rain 0xCFE0FB
+          scene 3-clothing 0xE6E1FF
+          scene 4-ask 0xFFE7B8
+          scene 5-tap 0xFFF0C8
+          # End card
+          printf '%s' "Pofuduk" > titles/e1.txt
+          printf '%s' "Konuşan Hava Durumu" > titles/e2.txt
+          printf '%s' "App Store'da ücretsiz" > titles/e3.txt
+          printf '%s' "Hesap yok · Reklam yok" > titles/e4.txt
+          d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 voice/6-end.wav)
+          dur=$(python3 -c "print(round(max(float('$d') + 1.0, 3.0), 2))")
+          ffmpeg -loglevel error -y \
+            -f lavfi -i "color=c=0x5B50D6:s=1080x1920:r=30:d=$dur" \
+            -i Pofuduk/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png -i voice/6-end.wav \
+            -filter_complex "[1:v]scale=380:380[ic];[0:v][ic]overlay=(W-w)/2:440[v1];\
+          [v1]drawtext=fontfile='$FONT':textfile=titles/e1.txt:fontsize=120:fontcolor=white:x=(w-text_w)/2:y=900,\
+          drawtext=fontfile='$FONT':textfile=titles/e2.txt:fontsize=58:fontcolor=white:x=(w-text_w)/2:y=1060,\
+          drawtext=fontfile='$FONT':textfile=titles/e3.txt:fontsize=56:fontcolor=0xEDEBFF:x=(w-text_w)/2:y=1220,\
+          drawtext=fontfile='$FONT':textfile=titles/e4.txt:fontsize=46:fontcolor=0xEDEBFF:x=(w-text_w)/2:y=1300[v]" \
+            -map "[v]" -map 2:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 clips/6-end.mp4
+          printf "file '%s'\n" clips/1-sunny.mp4 clips/2-rain.mp4 clips/3-clothing.mp4 clips/4-ask.mp4 clips/5-tap.mp4 clips/6-end.mp4 > list.txt
+          mkdir -p out
+          ffmpeg -loglevel error -y -f concat -safe 0 -i list.txt -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -movflags +faststart out/pofuduk-reel-taslak.mp4
+          ffprobe -v error -show_entries format=duration:stream=width,height -of default=nw=1 out/pofuduk-reel-taslak.mp4
+          # Frames for a quick visual check
+          for t in 1 4 7 10 13 16; do ffmpeg -loglevel error -y -ss $t -i out/pofuduk-reel-taslak.mp4 -frames:v 1 -vf scale=360:-2 "out/kare-$t.jpg" || true; done
+          cp clips/*.mp4 out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reel-draft
+          path: |
+            out/
+            raw/
+          retention-days: 14
