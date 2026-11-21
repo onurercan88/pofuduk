@@ -87,26 +87,53 @@ jobs:
           line 5-tap "Bana dokunursan kıkırdarım. Hi hi hi!"
           line 6-end "Pofuduk. App Store'da ücretsiz!"
           for f in voice/*.wav; do echo "$f $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f")"; done
+      - name: Titles and end card (Pillow; Homebrew ffmpeg has no drawtext)
+        run: |
+          python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
+          mkdir -p titles
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw, ImageFont
+          bold = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+          ink = (38, 40, 74)
+          def centered(d, y, text, size, fill):
+              f = ImageFont.truetype(bold, size)
+              w = d.textlength(text, font=f)
+              d.text(((1080 - w) / 2, y), text, font=f, fill=fill)
+          titles = {"1-sunny": "Hava durumunu sana anlatan bulut", "2-rain": "Yağmur saatini söyler",
+                    "3-clothing": "Ne giyeceğini söyler", "4-ask": "Sor, cevaplasın", "5-tap": "Dokun, kıkırdasın"}
+          for name, text in titles.items():
+              img = Image.new("RGBA", (1080, 200), (0, 0, 0, 0))
+              d = ImageDraw.Draw(img)
+              size = 68
+              while ImageDraw.Draw(img).textlength(text, font=ImageFont.truetype(bold, size)) > 980:
+                  size -= 2
+              centered(d, 60, text, size, ink)
+              img.save(f"titles/{name}.png")
+          card = Image.new("RGB", (1080, 1920), (91, 80, 214))
+          icon = Image.open("Pofuduk/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png").convert("RGBA").resize((380, 380))
+          mask = Image.new("L", (380, 380), 0)
+          ImageDraw.Draw(mask).rounded_rectangle((0, 0, 379, 379), radius=86, fill=255)
+          card.paste(icon, (350, 440), mask)
+          d = ImageDraw.Draw(card)
+          centered(d, 880, "Pofuduk", 120, (255, 255, 255))
+          centered(d, 1040, "Konuşan Hava Durumu", 58, (255, 255, 255))
+          centered(d, 1200, "App Store'da ücretsiz", 56, (237, 235, 255))
+          centered(d, 1290, "Hesap yok · Reklam yok", 46, (237, 235, 255))
+          card.save("titles/end.png")
+          print("titles ok")
+          PY
       - name: Edit 1080x1920 Reel
         run: |
-          FONT="/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-          mkdir -p clips titles
-          printf '%s' "Hava durumunu sana anlatan bulut" > titles/1-sunny.txt
-          printf '%s' "Yağmur saatini söyler" > titles/2-rain.txt
-          printf '%s' "Ne giyeceğini söyler" > titles/3-clothing.txt
-          printf '%s' "Sor, cevaplasın" > titles/4-ask.txt
-          printf '%s' "Dokun, kıkırdasın" > titles/5-tap.txt
+          mkdir -p clips
           scene() { # name bgcolor
             local n=$1 bg=$2
             local d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "voice/$n.wav")
             local dur=$(python3 -c "print(round(max(float('$d') + 0.7, 3.2), 2))")
             ffmpeg -loglevel error -y \
               -f lavfi -i "color=c=$bg:s=1080x1920:r=30:d=$dur" \
-              -ss 0.3 -i "raw/$n.mov" -i "voice/$n.wav" \
-              -filter_complex "[1:v]scale=-2:1500,pad=iw+20:ih+20:10:10:color=0x1B1C2E[ph];\
-          [0:v][ph]overlay=(W-w)/2:370:shortest=0[v1];\
-          [v1]drawtext=fontfile='$FONT':textfile=titles/$n.txt:fontsize=68:fontcolor=0x26284A:x=(w-text_w)/2:y=230[v]" \
-              -map "[v]" -map 2:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 "clips/$n.mp4"
+              -ss 0.3 -i "raw/$n.mov" -i "titles/$n.png" -i "voice/$n.wav" \
+              -filter_complex "[1:v]scale=-2:1500,pad=iw+20:ih+20:10:10:color=0x1B1C2E[ph];[0:v][ph]overlay=(W-w)/2:370:shortest=0[v1];[v1][2:v]overlay=0:170[v]" \
+              -map "[v]" -map 3:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 "clips/$n.mp4"
             echo "$n ${dur}s"
           }
           scene 1-sunny 0xFFE7B8
@@ -114,22 +141,11 @@ jobs:
           scene 3-clothing 0xE6E1FF
           scene 4-ask 0xFFE7B8
           scene 5-tap 0xFFF0C8
-          # End card
-          printf '%s' "Pofuduk" > titles/e1.txt
-          printf '%s' "Konuşan Hava Durumu" > titles/e2.txt
-          printf '%s' "App Store'da ücretsiz" > titles/e3.txt
-          printf '%s' "Hesap yok · Reklam yok" > titles/e4.txt
           d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 voice/6-end.wav)
           dur=$(python3 -c "print(round(max(float('$d') + 1.0, 3.0), 2))")
-          ffmpeg -loglevel error -y \
-            -f lavfi -i "color=c=0x5B50D6:s=1080x1920:r=30:d=$dur" \
-            -i Pofuduk/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png -i voice/6-end.wav \
-            -filter_complex "[1:v]scale=380:380[ic];[0:v][ic]overlay=(W-w)/2:440[v1];\
-          [v1]drawtext=fontfile='$FONT':textfile=titles/e1.txt:fontsize=120:fontcolor=white:x=(w-text_w)/2:y=900,\
-          drawtext=fontfile='$FONT':textfile=titles/e2.txt:fontsize=58:fontcolor=white:x=(w-text_w)/2:y=1060,\
-          drawtext=fontfile='$FONT':textfile=titles/e3.txt:fontsize=56:fontcolor=0xEDEBFF:x=(w-text_w)/2:y=1220,\
-          drawtext=fontfile='$FONT':textfile=titles/e4.txt:fontsize=46:fontcolor=0xEDEBFF:x=(w-text_w)/2:y=1300[v]" \
-            -map "[v]" -map 2:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 clips/6-end.mp4
+          ffmpeg -loglevel error -y -loop 1 -framerate 30 -i titles/end.png -i voice/6-end.wav \
+            -map 0:v -map 1:a -af apad -t "$dur" -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -ar 44100 -ac 2 clips/6-end.mp4
+          echo "end card ${dur}s"
           printf "file '%s'\n" clips/1-sunny.mp4 clips/2-rain.mp4 clips/3-clothing.mp4 clips/4-ask.mp4 clips/5-tap.mp4 clips/6-end.mp4 > list.txt
           mkdir -p out
           ffmpeg -loglevel error -y -f concat -safe 0 -i list.txt -c:v libx264 -pix_fmt yuv420p -r 30 -c:a aac -movflags +faststart out/pofuduk-reel-taslak.mp4
