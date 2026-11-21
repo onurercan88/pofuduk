@@ -72,6 +72,12 @@ public struct WeatherAnswerEngine: Sendable {
             }
         }
 
+        /// The asked hours start with the current hour and it is precipitating right now.
+        var precipitatingNow: Bool {
+            guard isToday, snapshot.current.condition.isPrecipitation, let first = hours.first else { return false }
+            return calendar.isDate(first.time, equalTo: now, toGranularity: .hour)
+        }
+
         /// "Yarın akşam", "Bugün saat 17.00 civarında", "Cumartesi"
         var label: String {
             let offset = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: day).day ?? 0
@@ -167,6 +173,9 @@ public struct WeatherAnswerEngine: Sendable {
         let tz = c.snapshot.place.timeZone
         if !hours.isEmpty {
             guard let p = summary.precipitationOutlook(in: hours) else {
+                if c.precipitatingNow {
+                    return ["Şu an yağış var ama sonraki saatlerde başka yağış beklenmiyor."]
+                }
                 return [repeatLabel ? "\(c.label) yağış beklenmiyor." : "Yağış beklenmiyor."]
             }
             let noun = p.kind == .snow ? "kar" : (p.kind == .thunderstorm ? "gök gürültülü sağanak" : "yağmur")

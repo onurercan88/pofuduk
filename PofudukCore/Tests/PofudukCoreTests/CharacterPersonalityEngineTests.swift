@@ -113,6 +113,17 @@ final class CharacterPersonalityEngineTests: XCTestCase {
         XCTAssertFalse(b.advice.contains { $0.contains("gün içinde") })
     }
 
+    func testPrecipitationNowWithDryEveningDoesNotContradict() {
+        // Seen on a device: "hava gök gürültülü sağanaklı" followed by "Bu akşam için yağış beklenmiyor."
+        let at = TestClock.date(hour: 18)
+        var snap = MockWeatherData.snapshot(.sunny, now: at)
+        snap.current.condition = .thunderstorm
+        let text = CharacterPersonalityEngine().briefing(for: summary.analyze(snap, now: at)).fullText
+        XCTAssertTrue(text.contains("gök gürültülü sağanaklı"), text)
+        XCTAssertFalse(text.contains("Bu akşam için yağış beklenmiyor"), text)
+        XCTAssertTrue(text.contains("Şu anki yağışın ardından bu akşam başka yağış beklenmiyor."), text)
+    }
+
     func testAfternoonTalksAboutTheRestOfTheDay() {
         let text = briefing(.sunny, at: 14).fullText
         XCTAssertFalse(text.contains("Bugün sıcaklık"), text)

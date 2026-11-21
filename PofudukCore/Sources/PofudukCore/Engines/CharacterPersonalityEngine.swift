@@ -182,6 +182,16 @@ public struct CharacterPersonalityEngine: Sendable {
         let tz = a.place.timeZone
         guard let p = a.precipitation else {
             guard a.hasHourlyCoverage else { return [] }
+            // It is precipitating now but the coming hours are dry: never say "no precipitation"
+            // right after "hava yağmurlu / gök gürültülü sağanaklı".
+            if a.current.condition.isPrecipitation {
+                switch a.briefingTime {
+                case .morning: return ["Şu anki yağışın ardından bugün başka yağış beklenmiyor."]
+                case .afternoon: return ["Şu anki yağışın ardından günün geri kalanında yağış beklenmiyor."]
+                case .evening: return ["Şu anki yağışın ardından bu akşam başka yağış beklenmiyor."]
+                case .night: return ["Şu anki yağışın ardından bu gece başka yağış beklenmiyor."]
+                }
+            }
             switch a.briefingTime {
             case .morning: return ["Bugün için yağış beklenmiyor."]
             case .afternoon: return ["Günün geri kalanında yağış beklenmiyor."]

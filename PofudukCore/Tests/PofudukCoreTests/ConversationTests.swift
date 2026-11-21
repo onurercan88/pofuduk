@@ -71,6 +71,22 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertTrue(text.contains("saat 14.00 civarında yağmur bekleniyor"), text)
     }
 
+    func testRainingNowButDryLaterIsNotTold_NoPrecipitation() {
+        var s = snapshot(.sunny)
+        s.current.condition = .thunderstorm
+        var m = ConversationManager()
+        let today = answers.answer(m.interpret("Bugün yağmur var mı?", now: now), snapshot: s, now: now).fullText
+        XCTAssertTrue(today.contains("Şu an yağış var ama sonraki saatlerde başka yağış beklenmiyor."), today)
+        var m2 = ConversationManager()
+        let tomorrow = answers.answer(m2.interpret("Yarın yağmur var mı?", now: now), snapshot: s, now: now).fullText
+        XCTAssertTrue(tomorrow.contains("Yarın yağış beklenmiyor."), tomorrow)
+        s.current.condition = .cloudy
+        var m3 = ConversationManager()
+        let dry = answers.answer(m3.interpret("Bugün yağmur var mı?", now: now), snapshot: s, now: now).fullText
+        XCTAssertFalse(dry.contains("Şu an yağış"), dry)
+        XCTAssertTrue(dry.contains("yağış beklenmiyor"), dry)
+    }
+
     func testFollowUpKeepsTomorrow() {
         var m = ConversationManager()
         _ = m.interpret("Yarın hava nasıl?", now: now)
