@@ -59,8 +59,10 @@ jobs:
             xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.storeScreenshots YES "$@" > /dev/null
             sleep "$settle"
             echo "$(date +%T) $name: record"
-            xcrun simctl io "$UDID" recordVideo --codec=h264 --force "raw/$name.mov" > /dev/null 2>&1 &
+            xcrun simctl io "$UDID" recordVideo --codec=h264 --force "raw/$name.mov" > "raw/$name.log" 2>&1 &
             local pid=$!
+            # Count the scene time from when the recorder really started (slow runners take seconds).
+            for i in $(seq 1 60); do grep -q "Recording started" "raw/$name.log" 2>/dev/null && break; sleep 0.5; done
             sleep "$secs"
             kill -INT $pid 2>/dev/null || true
             # Never wait forever: give the recorder 10 s to finish the file, then stop it hard.
