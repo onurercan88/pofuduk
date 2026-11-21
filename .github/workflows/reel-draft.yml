@@ -112,7 +112,7 @@ jobs:
               w = d.textlength(text, font=f)
               d.text(((1080 - w) / 2, y), text, font=f, fill=fill)
           titles = {"1-sunny": "Hava durumunu sana anlatan bulut", "2-rain": "Yağmur saatini söyler",
-                    "3-clothing": "Ne giyeceğini söyler", "4-ask": "Sor, cevaplasın", "5-tap": "Dokun, kıkırdasın"}
+                    "3-clothing": "Ne giyeceğini söyler", "4-ask": "“Yarın hava nasıl?” diye sor", "5-tap": "Dokun, kıkırdasın"}
           for name, text in titles.items():
               img = Image.new("RGBA", (1080, 200), (0, 0, 0, 0))
               d = ImageDraw.Draw(img)

@@ -201,6 +201,13 @@ final class HomeViewModel {
     func headerDate(_ wallClock: Date) -> Date { container.isClockFixed ? container.now() : wallClock }
     /// App Store screenshots only (DEBUG launch argument `-pofuduk.storeScreenshots YES`): hides the demo
     /// badge and scenario picker. Release builds always show them.
+    /// Sentences as spoken/shown. DEBUG store/promo recordings also drop the demo-data disclaimers
+    /// ("örnek veri…"), like the badge; every other build speaks them unchanged.
+    func presentable(_ sentences: [String]) -> [String] {
+        guard hidesDemoChrome else { return sentences }
+        return sentences.filter { !$0.localizedCaseInsensitiveContains("örnek veri") }
+    }
+
     var hidesDemoChrome: Bool {
         #if DEBUG
         return isDemoMode && defaults.bool(forKey: "pofuduk.storeScreenshots")
@@ -319,9 +326,10 @@ final class HomeViewModel {
 
     func playOrReplay() {
         guard let briefing = spoken ?? briefing else { return }
-        track.load(briefing.sentences)
+        let sentences = presentable(briefing.sentences)
+        track.load(sentences)
         if isSoundOn, container.speech.hasTurkishVoice {
-            container.speech.speak(briefing.sentences, rate: speechRate)
+            container.speech.speak(sentences, rate: speechRate)
             startSpeechWatchdog()
         } else {
             voiceMissing = !container.speech.hasTurkishVoice
@@ -417,7 +425,7 @@ final class HomeViewModel {
             briefing = personality.unavailableBriefing(reason: reason)
             loadState = .failed(reason)
         }
-        track.load(briefing?.sentences ?? [])
+        track.load(presentable(briefing?.sentences ?? []))
 
         guard autoSpeak else { return }
         if (greetSleepily && isMorning) || isMorningBriefing {
