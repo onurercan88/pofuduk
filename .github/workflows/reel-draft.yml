@@ -1,6 +1,6 @@
 name: Instagram Reel draft
-# Manual only: draft 9:16 promo Reel from real app footage (simulator, demo data) + Pofuduk lines voiced by the
-# macOS Turkish voice (pitched up a little), on-screen titles and an end card. Artifact `reel-draft`.
+# Manual only: draft 9:16 promo Reel from real app footage (simulator, demo data) + Pofuduk lines voiced by the app
+# itself (same voice settings as in the app), on-screen titles and an end card. Artifact `reel-draft`.
 on:
   workflow_dispatch:
 
@@ -76,29 +76,28 @@ jobs:
           rec 4-ask 4 8 -pofuduk.demoScenario sunny -pofuduk.fixedHour 11 -pofuduk.ask "Yarın hava nasıl?"
           rec 5-tap 4 7 -pofuduk.demoScenario sunny -pofuduk.fixedHour 11 -pofuduk.soundOn NO -pofuduk.autoTap YES
           ls -la raw
-      - name: Voice lines (macOS Turkish voice)
+      - name: Voice lines (Pofuduk's own voice, rendered by the app)
         run: |
-          say -v '?' | grep -i "tr_TR" || echo "::warning::no tr_TR voice installed"
-          VOICE=$(say -v '?' | awk '/tr_TR/ {print $1; exit}')
-          echo "Voice: ${VOICE:-none}"
+          # The app renders each line with SpeechService's voice, rate and pitch (VoiceExporter, DEBUG only);
+          # `!` = giggle style (pitch 1.5, as when the character is tapped).
+          SPEC="1-sunny=Merhaba, ben Pofuduk! Havayı sana ben anlatırım.|2-rain=Yağmur kaçta başlıyor? Saatiyle söylerim.|3-clothing=Ne giyeceğini de söylerim, nedenleriyle.|4-ask=Bir şey mi merak ettin? Sor bakalım!|5-tap=Bana dokunursan kıkırdarım.|5-giggle!=Hi hi hi hi!|6-end=Pofuduk. App Store'da ücretsiz!"
+          xcrun simctl terminate "$UDID" com.pofuduk.app 2>/dev/null || true
+          xcrun simctl launch "$UDID" com.pofuduk.app -pofuduk.demoScenario sunny -pofuduk.soundOn NO -pofuduk.exportVoice "$SPEC" > /dev/null
+          DATA=$(xcrun simctl get_app_container "$UDID" com.pofuduk.app data)
+          for i in $(seq 1 120); do [ -f "$DATA/Documents/voice/done.txt" ] && break; sleep 1; done
+          cat "$DATA/Documents/voice/done.txt" || echo "::error::voice export did not finish"
           mkdir -p voice
-          line() { # name text
-            if [ -n "$VOICE" ]; then
-              say -v "$VOICE" -r 175 -o "voice/$1.aiff" "$2"
-              # Slightly higher, friendlier voice (Pofuduk speaks at pitch 1.12 in the app).
-              local sr=$(ffprobe -v error -select_streams a:0 -show_entries stream=sample_rate -of csv=p=0 "voice/$1.aiff")
-              ffmpeg -loglevel error -y -i "voice/$1.aiff" -af "asetrate=${sr}*1.1,aresample=44100,atempo=0.95" "voice/$1.wav"
-            else
-              ffmpeg -loglevel error -y -f lavfi -i anullsrc=r=44100:cl=mono -t 2.5 "voice/$1.wav"
-            fi
-          }
-          line 1-sunny "Merhaba, ben Pofuduk! Havayı sana ben anlatırım."
-          line 2-rain "Yağmur kaçta başlıyor? Saatiyle söylerim."
-          line 3-clothing "Ne giyeceğini de söylerim, nedenleriyle."
-          line 4-ask "Bir şey mi merak ettin? Sor bakalım!"
-          line 5-tap "Bana dokunursan kıkırdarım. Hi hi hi!"
-          line 6-end "Pofuduk. App Store'da ücretsiz!"
-          for f in voice/*.wav; do echo "$f $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f")"; done
+          for f in "$DATA"/Documents/voice/*.caf; do
+            ffmpeg -loglevel error -y -i "$f" -ar 44100 -ac 1 "voice/$(basename "$f" .caf).wav"
+          done
+          # Line, short pause, giggle
+          ffmpeg -loglevel error -y -i voice/5-tap.wav -i voice/5-giggle.wav \
+            -filter_complex "[0:a]apad=pad_dur=0.25[a];[a][1:a]concat=n=2:v=0:a=1" voice/5-tap-full.wav
+          mv voice/5-tap-full.wav voice/5-tap.wav
+          for n in 1-sunny 2-rain 3-clothing 4-ask 5-tap 6-end; do
+            [ -s "voice/$n.wav" ] || { echo "::error::missing voice/$n.wav"; exit 1; }
+            echo "$n $(ffprobe -v error -show_entries format=duration -of csv=p=0 "voice/$n.wav")"
+          done
       - name: Titles and end card (Pillow; Homebrew ffmpeg has no drawtext)
         run: |
           python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
@@ -172,4 +171,5 @@ jobs:
           path: |
             out/
             raw/
+            voice/
           retention-days: 14

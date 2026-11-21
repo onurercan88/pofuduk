@@ -62,7 +62,11 @@ final class SpeechService: NSObject, SpeechServicing {
 
     /// Device testing: the system default sounded slow in Turkish; ~7% faster is close to everyday speech.
     /// The settings slider still scales this (0.8×–1.25×).
-    static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 1.07
+    nonisolated static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 1.07
+    /// Pofuduk's voice: a little higher than the system voice; giggles higher and quicker still.
+    nonisolated static let briefingPitch: Float = 1.12
+    nonisolated static let effectPitch: Float = 1.5
+    nonisolated static let effectRate: Float = defaultRate * 1.1
 
     override init() {
         voice = Self.preferredTurkishVoice()
@@ -104,7 +108,7 @@ final class SpeechService: NSObject, SpeechServicing {
     }
 
     /// Prefers the highest-quality installed tr-TR voice.
-    static func preferredTurkishVoice() -> AVSpeechSynthesisVoice? {
+    nonisolated static func preferredTurkishVoice() -> AVSpeechSynthesisVoice? {
         let turkish = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == "tr-TR" }
         return turkish.max { $0.quality.rawValue < $1.quality.rawValue } ?? AVSpeechSynthesisVoice(language: "tr-TR")
     }
@@ -119,7 +123,7 @@ final class SpeechService: NSObject, SpeechServicing {
             let utterance = AVSpeechUtterance(string: sentence)
             utterance.voice = voice
             utterance.rate = rate
-            utterance.pitchMultiplier = 1.12
+            utterance.pitchMultiplier = Self.briefingPitch
             utterance.postUtteranceDelay = 0.22
             pending[ObjectIdentifier(utterance)] = (utterance, index)
             return utterance
@@ -155,8 +159,8 @@ final class SpeechService: NSObject, SpeechServicing {
         if effectsSynthesizer.isSpeaking { effectsSynthesizer.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
-        utterance.rate = Self.defaultRate * 1.1
-        utterance.pitchMultiplier = 1.5
+        utterance.rate = Self.effectRate
+        utterance.pitchMultiplier = Self.effectPitch
         activateAudioSession()
         effectsSynthesizer.speak(utterance)
         // Release the session (un-duck other audio) once the giggle is over and no briefing started.

@@ -9,6 +9,9 @@ struct PofudukApp: App {
         let container = DependencyContainer.app()
         _coordinator = State(initialValue: AppCoordinator(container: container))
         BackgroundRefresh.register { await container.backgroundRefresh() }
+        #if DEBUG
+        VoiceExporter.runIfRequested()
+        #endif
     }
 
     var body: some Scene {
