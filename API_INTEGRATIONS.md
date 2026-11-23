@@ -38,6 +38,7 @@ Apple Weather (WeatherKit) → WeatherAPI (only with a key, not shipped) → Ope
 - No documented public API, RSS or CAP feed for warnings. MEVBİS and "Ücretli Ürünler" are MGM's data sales channels.
 - The legal notice (https://www.mgm.gov.tr/site/yasal-uyari.aspx) forbids copying or redistributing content "önceden izin alınmadan ve kaynak gösterilmeden" (without prior permission and without citing the source). So scraping is not an option.
 - MeteoAlarm (EUMETNET, CC BY 4.0) does **not** include Turkey; the Turkey feed URLs return 404.
+- Rechecked 2026-11-23: WeatherKit `weatherAlerts` sources are NWS, ECCC, SMN (Mexico) and MeteoAlarm, so no Turkish alerts; Apple's severe-weather country list doesn't name Turkey. The WMO alerting-authority entry for Türkiye has no CAP feed URL. The card text now says the app can't show MGM warnings yet (it read like a broken connection).
 
 **Implementation:**
 - `ConfiguredMGMWarningProvider` reads `MGMWarningFeedURL` from Info.plist (empty by default). When empty it returns `.unavailable` with the official page. A failed feed is also `.unavailable`, never "no warnings".

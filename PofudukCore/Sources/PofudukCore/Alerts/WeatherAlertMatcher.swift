@@ -37,7 +37,9 @@ public struct ConfiguredMGMWarningProvider: MGMWarningProvider {
         self.http = http
     }
 
-    public static let unavailableReason = "MGM resmi uyarıları için yetkili bir veri bağlantısı henüz yok."
+    /// Worded so it does not read like a broken connection (a user expected a real warning here).
+    public static let unavailableReason =
+        "Pofuduk resmi MGM uyarılarını henüz otomatik gösteremiyor. Bölgendeki güncel uyarıları MGM'nin sayfasından görebilirsin."
 
     public func warnings() async -> WarningAvailability {
         guard let feedURL else {

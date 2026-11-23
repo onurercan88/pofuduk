@@ -44,7 +44,9 @@ final class MGMWarningTests: XCTestCase {
         let repo = MGMAlertRepository(provider: ConfiguredMGMWarningProvider(feedURL: nil, http: StubHTTPClient()))
         guard case .unavailable(let reason, let page) = await repo.warnings(for: istanbul, at: now) else { return XCTFail() }
         XCTAssertEqual(page.absoluteString, "https://www.mgm.gov.tr/meteouyari/turkiye.aspx")
-        XCTAssertTrue(reason.contains("yetkili"))
+        // Must not read like a broken connection, and must point to MGM's page.
+        XCTAssertFalse(reason.contains("bağlantı"), reason)
+        XCTAssertTrue(reason.contains("MGM'nin sayfasından"), reason)
     }
 
     func testFeedFailureIsUnavailableNotEmpty() async {

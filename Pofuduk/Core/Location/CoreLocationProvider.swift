@@ -26,14 +26,51 @@ final class CoreLocationProvider: NSObject {
         }
     }
 
+    /// How long to wait for a fix. A cold start indoors can take several seconds.
+    static let fixTimeout: Duration = .seconds(12)
+    /// A system-cached fix this recent is used right away.
+    nonisolated static let freshFixAge: TimeInterval = 2 * 60
+    /// On timeout, a cached fix up to this old is still better than "konumunu bulamadım".
+    nonisolated static let fallbackFixAge: TimeInterval = 30 * 60
+    private var request = 0
+
+    /// `requestLocation()` gives up on the first `locationUnknown` (common right after launch with a cold
+    /// GPS; "Tekrar dene" then worked). Instead: use a fresh cached fix, else keep updating until the
+    /// first usable fix or the timeout.
     func currentPlace() async throws -> Place {
         guard permission == .authorized else { throw LocationError.permissionDenied }
-        locationContinuation?.resume(throwing: LocationError.unavailable)
+        if let cached = manager.location, Self.isUsable(cached, maxAge: Self.freshFixAge) {
+            return await place(for: cached)
+        }
+        finish(.failure(LocationError.unavailable))
+        request += 1
+        let id = request
         let location: CLLocation = try await withCheckedThrowingContinuation { continuation in
             locationContinuation = continuation
-            manager.requestLocation()
+            manager.startUpdatingLocation()
+            Task { [weak self] in
+                try? await Task.sleep(for: Self.fixTimeout)
+                guard let self, self.request == id, self.locationContinuation != nil else { return }
+                if let cached = self.manager.location, Self.isUsable(cached, maxAge: Self.fallbackFixAge) {
+                    self.finish(.success(cached))
+                } else {
+                    self.finish(.failure(LocationError.unavailable))
+                }
+            }
         }
         return await place(for: location)
+    }
+
+    private func finish(_ result: Result<CLLocation, Error>) {
+        guard let continuation = locationContinuation else { return }
+        locationContinuation = nil
+        manager.stopUpdatingLocation()
+        continuation.resume(with: result)
+    }
+
+    nonisolated static func isUsable(_ location: CLLocation, maxAge: TimeInterval) -> Bool {
+        location.horizontalAccuracy >= 0 && location.horizontalAccuracy <= 5_000
+            && abs(location.timestamp.timeIntervalSinceNow) <= maxAge
     }
 
     private func place(for location: CLLocation) async -> Place {
@@ -69,18 +106,17 @@ extension CoreLocationProvider: CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        Task { @MainActor in
-            self.locationContinuation?.resume(returning: location)
-            self.locationContinuation = nil
-        }
+        // Skip stale or invalid fixes; keep waiting for a usable one (or the timeout).
+        guard let location = locations.last(where: { Self.isUsable($0, maxAge: Self.freshFixAge) }) else { return }
+        Task { @MainActor in self.finish(.success(location)) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        let denied = (error as? CLError)?.code == .denied
+        let code = (error as? CLError)?.code
+        // "Unable to retrieve a location right away": Core Location keeps trying, so keep waiting.
+        guard code != .locationUnknown else { return }
         Task { @MainActor in
-            self.locationContinuation?.resume(throwing: denied ? LocationError.permissionDenied : LocationError.unavailable)
-            self.locationContinuation = nil
+            self.finish(.failure(code == .denied ? LocationError.permissionDenied : LocationError.unavailable))
         }
     }
 }
