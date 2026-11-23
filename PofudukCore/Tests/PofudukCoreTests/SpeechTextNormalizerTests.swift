@@ -2,9 +2,9 @@ import XCTest
 @testable import PofudukCore
 
 final class SpeechTextNormalizerTests: XCTestCase {
-    private func range(of word: String, in text: String) -> TextRange {
+    private func range(of word: String, in text: String) -> PofudukCore.TextRange {
         let r = (text as NSString).range(of: word)
-        return TextRange(location: r.location, length: r.length)
+        return PofudukCore.TextRange(location: r.location, length: r.length)
     }
 
     func testClockTimesAreSpokenAsHours() {
