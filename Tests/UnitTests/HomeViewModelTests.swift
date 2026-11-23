@@ -245,6 +245,10 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(speech.lastRate, SpeechService.defaultRate * 1.2, accuracy: 0.0001)
         vm.updatePreferences { $0.voiceIdentifier = "preview.tr" }
         XCTAssertEqual(speech.selectedVoice, "preview.tr")
+        XCTAssertEqual(speech.pitch, VoiceTone.pofuduk.pitchMultiplier)
+        vm.updatePreferences { $0.voiceTone = .natural }
+        XCTAssertEqual(speech.pitch, 1.0)
+        XCTAssertTrue(vm.canImproveVoice, "preview voice is Standart → settings shows the download hint")
     }
 
     func testDeleteAllDataResetsEverything() async {

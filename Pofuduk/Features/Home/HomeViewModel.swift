@@ -61,6 +61,12 @@ final class HomeViewModel {
     }
     var speechRate: Float { SpeechService.defaultRate * Float(preferences.clampedSpeechRate) }
     var availableVoices: [VoiceOption] { container.speech.turkishVoices() }
+    /// True when only a basic ("Standart") Turkish voice is in use: Settings then explains how to get a
+    /// more natural one ("Gelişmiş"/"Premium", a free download in iOS Settings).
+    var canImproveVoice: Bool {
+        guard let voice = container.speech.activeVoice else { return false }
+        return voice.qualityName == "Standart"
+    }
     let travel: TravelWeatherViewModel
     private(set) var isMorningBriefing = false
     var notifications: NotificationCoordinator { container.notifications }
@@ -83,6 +89,7 @@ final class HomeViewModel {
         let prefs = container.preferencesStore.load()
         self.preferences = prefs
         container.speech.setVoice(prefs.voiceIdentifier)
+        container.speech.setPitch(prefs.voiceTone.pitchMultiplier)
         self.conversation = ConversationViewModel(service: WeatherQueryService(container: container),
                                                   recognizer: container.speechRecognizer, now: container.now)
         self.travel = TravelWeatherViewModel(service: TravelWeatherService(container: container), now: container.now)
@@ -143,6 +150,7 @@ final class HomeViewModel {
         change(&preferences)
         container.preferencesStore.save(preferences)
         if old.voiceIdentifier != preferences.voiceIdentifier { container.speech.setVoice(preferences.voiceIdentifier) }
+        if old.voiceTone != preferences.voiceTone { container.speech.setPitch(preferences.voiceTone.pitchMultiplier) }
         // Re-word the current briefing in the new style/length (facts unchanged).
         if (old.style != preferences.style || old.briefingLength != preferences.briefingLength),
            let analysis, !isMorningBriefing, loadState == .loaded {
@@ -180,6 +188,7 @@ final class HomeViewModel {
         await container.deleteAllData()
         preferences = UserPreferences()
         container.speech.setVoice(nil)
+        container.speech.setPitch(VoiceTone.pofuduk.pitchMultiplier)
         isSoundOn = true
         defaults.removeObject(forKey: Self.soundKey)
         conversation.clearHistory()
@@ -442,6 +451,8 @@ final class HomeViewModel {
 
     /// Re-opening the app in the morning (from background) shows the daily greeting once.
     func sceneDidBecomeActive() async {
+        // A better voice may have been downloaded in iOS Settings meanwhile: re-pick (cheap, no speech).
+        if preferences.voiceIdentifier == nil, !track.isActive { container.speech.setVoice(nil) }
         guard hasAppeared, demoScenario == nil, loadState != .loading,
               let tz = snapshot?.place.timeZone, container.notifications.shouldGreet(timeZone: tz) else { return }
         await load(autoSpeak: true, greetSleepily: false)

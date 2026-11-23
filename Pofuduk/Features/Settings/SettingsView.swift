@@ -37,6 +37,15 @@ struct SettingsView: View {
                             Text("Otomatik (en iyi kalite)").tag(String?.none)
                             ForEach(viewModel.availableVoices) { v in Text("\(v.name) · \(v.qualityName)").tag(Optional(v.id)) }
                         }
+                        if viewModel.canImproveVoice {
+                            Label {
+                                Text("Daha doğal bir ses için: iOS Ayarları › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe bölümünden bir sesin \"Gelişmiş\" sürümünü indir. Pofuduk onu kendiliğinden kullanır.")
+                            } icon: { Image(systemName: "waveform.badge.plus") }
+                            .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Picker("Ses tonu", selection: Binding(get: { prefs.voiceTone }, set: { v in viewModel.updatePreferences { $0.voiceTone = v } })) {
+                            ForEach(VoiceTone.allCases, id: \.self) { Text($0.turkishName).tag($0) }
+                        }
                     }
                     VStack(alignment: .leading) {
                         Text("Konuşma hızı")

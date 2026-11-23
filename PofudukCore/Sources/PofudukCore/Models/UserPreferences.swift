@@ -13,6 +13,17 @@ public enum SubtitleSize: String, Codable, Sendable, CaseIterable {
     }
 }
 
+/// Pitch of Pofuduk's voice. Raising the system voice's pitch can sound more synthetic, so users can pick.
+public enum VoiceTone: String, Codable, Sendable, CaseIterable {
+    /// A little higher, the character's original voice.
+    case pofuduk
+    /// The system voice's own pitch.
+    case natural
+
+    public var turkishName: String { self == .pofuduk ? "Pofuduk (ince)" : "Doğal" }
+    public var pitchMultiplier: Float { self == .pofuduk ? 1.12 : 1.0 }
+}
+
 /// Personalization stored on device only (no sync, no inferred personal attributes).
 public struct UserPreferences: Codable, Equatable, Sendable {
     public var style: PersonalityStyle = .friendly
@@ -22,8 +33,26 @@ public struct UserPreferences: Codable, Equatable, Sendable {
     /// AVSpeechSynthesisVoice identifier; nil = best installed Turkish voice.
     public var voiceIdentifier: String?
     public var subtitleSize: SubtitleSize = .standard
+    public var voiceTone: VoiceTone = .pofuduk
 
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case style, briefingLength, speechRateMultiplier, voiceIdentifier, subtitleSize, voiceTone
+    }
+
+    /// Missing keys keep their defaults, so preferences saved by an older version (without newer
+    /// settings such as `voiceTone`) still load instead of resetting everything.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = UserPreferences()
+        style = try c.decodeIfPresent(PersonalityStyle.self, forKey: .style) ?? d.style
+        briefingLength = try c.decodeIfPresent(BriefingLength.self, forKey: .briefingLength) ?? d.briefingLength
+        speechRateMultiplier = try c.decodeIfPresent(Double.self, forKey: .speechRateMultiplier) ?? d.speechRateMultiplier
+        voiceIdentifier = try c.decodeIfPresent(String.self, forKey: .voiceIdentifier)
+        subtitleSize = (try? c.decodeIfPresent(SubtitleSize.self, forKey: .subtitleSize)) ?? d.subtitleSize
+        voiceTone = (try? c.decodeIfPresent(VoiceTone.self, forKey: .voiceTone)) ?? d.voiceTone
+    }
 
     public static let speechRateRange: ClosedRange<Double> = 0.8...1.25
 

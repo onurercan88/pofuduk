@@ -31,6 +31,10 @@ final class PreviewSpeechService: SpeechServicing {
 
     func setVoice(_ identifier: String?) { selectedVoice = identifier }
 
+    private(set) var pitch: Float = VoiceTone.pofuduk.pitchMultiplier
+    func setPitch(_ pitch: Float) { self.pitch = pitch }
+    var activeVoice: VoiceOption? { turkishVoices().first }
+
     func speak(_ sentences: [String], rate: Float) {
         lastRate = rate
         stop()

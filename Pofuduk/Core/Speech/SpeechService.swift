@@ -28,6 +28,10 @@ protocol SpeechServicing: AnyObject {
     func turkishVoices() -> [VoiceOption]
     /// nil = best installed Turkish voice.
     func setVoice(_ identifier: String?)
+    /// The voice in use, if it is an installed Turkish voice (its quality drives the settings hint).
+    var activeVoice: VoiceOption? { get }
+    /// Briefing/answer pitch (`VoiceTone.pitchMultiplier`); giggles keep their own pitch.
+    func setPitch(_ pitch: Float)
     func speak(_ sentences: [String], rate: Float)
     func pause()
     func resume()
@@ -56,15 +60,17 @@ final class SpeechService: NSObject, SpeechServicing {
     /// every delegate callback keeps its own utterance alive until handled, so a late callback of an
     /// interrupted utterance can never alias a new one at a reused address (it did when only the
     /// `ObjectIdentifier` was captured).
-    private var pending: [ObjectIdentifier: (utterance: AVSpeechUtterance, index: Int)] = [:]
+    /// `spoken` maps the synthesizer's word ranges back to the subtitle sentence.
+    private var pending: [ObjectIdentifier: (utterance: AVSpeechUtterance, index: Int, spoken: SpokenText)] = [:]
     private var voice: AVSpeechSynthesisVoice?
+    private var pitch: Float = VoiceTone.pofuduk.pitchMultiplier
     private var interruptionObserver: NSObjectProtocol?
 
     /// Device testing: the system default sounded slow in Turkish; ~7% faster is close to everyday speech.
     /// The settings slider still scales this (0.8×–1.25×).
     nonisolated static let defaultRate: Float = AVSpeechUtteranceDefaultSpeechRate * 1.07
-    /// Pofuduk's voice: a little higher than the system voice; giggles higher and quicker still.
-    nonisolated static let briefingPitch: Float = 1.12
+    /// Pofuduk's default voice (the user can switch to the natural pitch); giggles higher and quicker still.
+    nonisolated static let briefingPitch: Float = VoiceTone.pofuduk.pitchMultiplier
     nonisolated static let effectPitch: Float = 1.5
     nonisolated static let effectRate: Float = defaultRate * 1.1
 
@@ -107,6 +113,13 @@ final class SpeechService: NSObject, SpeechServicing {
         voice = identifier.flatMap(AVSpeechSynthesisVoice.init(identifier:)) ?? Self.preferredTurkishVoice()
     }
 
+    func setPitch(_ pitch: Float) { self.pitch = pitch }
+
+    var activeVoice: VoiceOption? {
+        guard let voice else { return nil }
+        return turkishVoices().first { $0.id == voice.identifier }
+    }
+
     /// Prefers the highest-quality installed tr-TR voice.
     nonisolated static func preferredTurkishVoice() -> AVSpeechSynthesisVoice? {
         let turkish = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == "tr-TR" }
@@ -120,12 +133,14 @@ final class SpeechService: NSObject, SpeechServicing {
             return
         }
         let utterances = sentences.enumerated().map { index, sentence -> AVSpeechUtterance in
-            let utterance = AVSpeechUtterance(string: sentence)
+            // Subtitles keep the written form; the voice gets the speech-friendly one ("14.00" → "14").
+            let spoken = SpeechTextNormalizer.spoken(sentence)
+            let utterance = AVSpeechUtterance(string: spoken.text)
             utterance.voice = voice
             utterance.rate = rate
-            utterance.pitchMultiplier = Self.briefingPitch
+            utterance.pitchMultiplier = pitch
             utterance.postUtteranceDelay = 0.22
-            pending[ObjectIdentifier(utterance)] = (utterance, index)
+            pending[ObjectIdentifier(utterance)] = (utterance, index, spoken)
             return utterance
         }
         let mustWait = stopInProgress
@@ -247,7 +262,10 @@ extension SpeechService: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, willSpeakRangeOfSpeechString range: NSRange,
                                        utterance: AVSpeechUtterance) {
         let r = TextRange(location: range.location, length: range.length)
-        Task { @MainActor in self.handle(utterance) { .willSpeak(r, sentence: $0) } }
+        Task { @MainActor in
+            guard let entry = self.pending[ObjectIdentifier(utterance)] else { return }
+            self.onEvent?(.willSpeak(entry.spoken.subtitleRange(for: r), sentence: entry.index))
+        }
     }
 
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
