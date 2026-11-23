@@ -162,7 +162,7 @@ _Last updated: 2026-11-19_
 ### Device layout check (2026-11-20)
 - [x] `device-matrix.yml`: 6 iPhone sizes × normal/XXXL/AX5; no crashes or faults; TestFlight build 7: 0 crashes
 - [x] Fixed: page clipped on both edges on 375 pt iPhones (SE, mini); header/hero/clothing at accessibility text sizes; lightning flash showed a box on wide screens
-- [x] 1.0.0 live in Türkiye (2026-11-20). 1.0.2 (build 9: layout fixes + no "yağış beklenmiyor" while precipitating now; replaced 1.0.1) approved 2026-11-23. 1.0.3 (location fix at launch, clearer MGM card) → TestFlight
+- [x] 1.0.0 live in Türkiye (2026-11-20). 1.0.2 (build 9: layout fixes + no "yağış beklenmiyor" while precipitating now; replaced 1.0.1) approved 2026-11-23. 1.0.3 (build 10: location fix at launch, clearer MGM card) submitted for App Review 2026-11-23, automatic release
 - [ ] New TestFlight build with the above, then re-test on device
 
 ## Known limitations
