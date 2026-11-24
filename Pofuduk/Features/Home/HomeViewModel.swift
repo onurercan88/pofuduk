@@ -229,6 +229,8 @@ final class HomeViewModel {
     var isStale: Bool { analysis?.isStale ?? false }
     var needsLocation: Bool { loadState == .needsLocation }
     var isApproximateLocation: Bool { snapshot?.place.source == .ipApproximate }
+    /// The device couldn't get a fix; the last GPS place (≤ 12 h) is shown. Pull to refresh tries again.
+    var isLastKnownLocation: Bool { snapshot?.place.source == .lastKnown }
     var isIPAvailable: Bool { container.location.isIPAvailable }
 
     var upcomingHours: [HourlyForecast] {

@@ -7,7 +7,11 @@ final class CoreLocationProvider: NSObject {
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
     private var authContinuation: CheckedContinuation<LocationPermission, Never>?
-    private var locationContinuation: CheckedContinuation<CLLocation, Error>?
+    /// Everyone waiting for the running fix request. A second caller (e.g. pull-to-refresh during the
+    /// launch load) joins it instead of cancelling it — cancelling made the first load show
+    /// "Konumunu bulamadım".
+    private var waiters: [CheckedContinuation<CLLocation, Error>] = []
+    private var timeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -32,7 +36,9 @@ final class CoreLocationProvider: NSObject {
     nonisolated static let freshFixAge: TimeInterval = 2 * 60
     /// On timeout, a cached fix up to this old is still better than "konumunu bulamadım".
     nonisolated static let fallbackFixAge: TimeInterval = 30 * 60
-    private var request = 0
+    /// A weather forecast only needs the district/city. With "Kesin Konum" off, iOS reports fixes a few
+    /// kilometres wide; the old 5 km limit rejected some of them, so the request timed out now and then.
+    nonisolated static let maxUsableAccuracy: CLLocationAccuracy = 25_000
 
     /// `requestLocation()` gives up on the first `locationUnknown` (common right after launch with a cold
     /// GPS; "Tekrar dene" then worked). Instead: use a fresh cached fix, else keep updating until the
@@ -42,15 +48,13 @@ final class CoreLocationProvider: NSObject {
         if let cached = manager.location, Self.isUsable(cached, maxAge: Self.freshFixAge) {
             return await place(for: cached)
         }
-        finish(.failure(LocationError.unavailable))
-        request += 1
-        let id = request
         let location: CLLocation = try await withCheckedThrowingContinuation { continuation in
-            locationContinuation = continuation
+            waiters.append(continuation)
+            guard waiters.count == 1 else { return }   // a request is already running: share its result
             manager.startUpdatingLocation()
-            Task { [weak self] in
+            timeoutTask = Task { [weak self] in
                 try? await Task.sleep(for: Self.fixTimeout)
-                guard let self, self.request == id, self.locationContinuation != nil else { return }
+                guard let self, !Task.isCancelled, !self.waiters.isEmpty else { return }
                 if let cached = self.manager.location, Self.isUsable(cached, maxAge: Self.fallbackFixAge) {
                     self.finish(.success(cached))
                 } else {
@@ -62,14 +66,17 @@ final class CoreLocationProvider: NSObject {
     }
 
     private func finish(_ result: Result<CLLocation, Error>) {
-        guard let continuation = locationContinuation else { return }
-        locationContinuation = nil
+        guard !waiters.isEmpty else { return }
+        let all = waiters
+        waiters = []
+        timeoutTask?.cancel()
+        timeoutTask = nil
         manager.stopUpdatingLocation()
-        continuation.resume(with: result)
+        all.forEach { $0.resume(with: result) }
     }
 
     nonisolated static func isUsable(_ location: CLLocation, maxAge: TimeInterval) -> Bool {
-        location.horizontalAccuracy >= 0 && location.horizontalAccuracy <= 5_000
+        location.horizontalAccuracy >= 0 && location.horizontalAccuracy <= maxUsableAccuracy
             && abs(location.timestamp.timeIntervalSinceNow) <= maxAge
     }
 

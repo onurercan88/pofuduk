@@ -56,11 +56,15 @@ public struct LocationPreference: Codable, Equatable, Sendable {
     /// Last place used for a forecast, coarsened to ~1 km (2 decimals). Used only for background
     /// notification refresh, which cannot ask for location.
     public var lastPlace: Place?
+    /// When `lastPlace` was last confirmed by a real fix (nil in data saved by older versions).
+    public var lastPlaceAt: Date?
 
-    public init(mode: LocationMode = .automatic, manualPlace: Place? = nil, lastPlace: Place? = nil) {
+    public init(mode: LocationMode = .automatic, manualPlace: Place? = nil, lastPlace: Place? = nil,
+                lastPlaceAt: Date? = nil) {
         self.mode = mode
         self.manualPlace = manualPlace
         self.lastPlace = lastPlace
+        self.lastPlaceAt = lastPlaceAt
     }
 
     /// Place for background work: the user's manual choice, else the last (coarsened) place.

@@ -52,6 +52,10 @@ struct HomeHeader: View {
                 Badge(text: "Yaklaşık konum (IP)", systemImage: "network")
                     .padding(.top, 4)
             }
+            if viewModel.isLastKnownLocation {
+                Badge(text: "Son bilinen konum · yenilemek için aşağı çek", systemImage: "location.slash")
+                    .padding(.top, 4)
+            }
         }
     }
 

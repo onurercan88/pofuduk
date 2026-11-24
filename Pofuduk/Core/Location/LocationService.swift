@@ -46,8 +46,10 @@ final class LocationService: LocationServicing {
             permission: device.permission,
             gps: { try await device.currentPlace() },
             ip: ip)
-        if case .resolved(let place) = result {
+        // A last-known fallback must not refresh its own timestamp (it would never expire).
+        if case .resolved(let place) = result, place.source != .lastKnown {
             preference.lastPlace = LocationPreference.coarsened(place)
+            preference.lastPlaceAt = Date()
             store.save(preference)
         }
         return result

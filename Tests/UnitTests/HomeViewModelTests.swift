@@ -439,6 +439,16 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(vm.isApproximateLocation)
     }
 
+    func testLastKnownLocationShowsWeatherAndIsLabelled() async {
+        var place = MockWeatherData.istanbul
+        place.source = .lastKnown
+        let vm = makeLiveViewModel(location: StubLocationService(.resolved(place)))
+        await vm.onAppear()
+        XCTAssertEqual(vm.loadState, .loaded)
+        XCTAssertTrue(vm.isLastKnownLocation)
+        XCTAssertFalse(vm.isApproximateLocation)
+    }
+
     private func makeViewModel(speech: PreviewSpeechService, hour: Int = 15,
                                demo: MockWeatherData.Scenario? = .rainyAfternoon) -> HomeViewModel {
         var calendar = Calendar(identifier: .gregorian)

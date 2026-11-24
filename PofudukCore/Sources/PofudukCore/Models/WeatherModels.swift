@@ -10,8 +10,10 @@ public struct Coordinate: Equatable, Hashable, Codable, Sendable {
 }
 
 /// How a place was determined. IP-based locations are always approximate.
+/// `lastKnown`: the device couldn't get a fix right now, so the last GPS place (≤ 12 h old, ~1 km) is used
+/// and labelled as such.
 public enum LocationSource: String, Codable, Sendable {
-    case gps, ipApproximate, manual, demo
+    case gps, ipApproximate, manual, demo, lastKnown
 }
 
 public struct Place: Equatable, Hashable, Codable, Sendable {

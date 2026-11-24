@@ -6,11 +6,16 @@ import Foundation
 public struct LocationResolver: Sendable {
     public init() {}
 
+    /// A device fix can fail now and then (indoors, cold start). Rather than "Konumunu bulamadım", the
+    /// last GPS place is used if it was confirmed within this time, labelled "Son bilinen konum".
+    public static let lastKnownMaxAge: TimeInterval = 12 * 60 * 60
+
     public func resolve(
         preference: LocationPreference,
         permission: LocationPermission,
         gps: () async throws -> Place,
-        ip: (() async throws -> Place)?
+        ip: (() async throws -> Place)?,
+        now: Date = Date()
     ) async -> LocationResolution {
         switch preference.mode {
         case .manual:
@@ -40,6 +45,12 @@ public struct LocationResolver: Sendable {
                 } catch LocationError.permissionDenied {
                     return .needsUserChoice(.permissionDenied)
                 } catch {
+                    if let last = preference.lastPlace, last.source == .gps, let at = preference.lastPlaceAt,
+                       now.timeIntervalSince(at) >= 0, now.timeIntervalSince(at) <= Self.lastKnownMaxAge {
+                        var place = last
+                        place.source = .lastKnown
+                        return .resolved(place)
+                    }
                     return .needsUserChoice(.gpsUnavailable)
                 }
             }

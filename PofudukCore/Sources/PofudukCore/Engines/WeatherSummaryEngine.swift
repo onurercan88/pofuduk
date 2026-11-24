@@ -25,6 +25,18 @@ public struct PrecipitationOutlook: Equatable, Sendable {
     public var durationHours: Int { max(1, Int((end.timeIntervalSince(start) / 3600).rounded())) }
 }
 
+/// It is precipitating now, but the forecast's first wet period starts at a later hour (the forecast
+/// missed the current shower). Decides how the later period is told, so the briefing never says
+/// "yağmur saat 9'da başlayacak" while it is already raining.
+public enum LaterPrecipitationRelation: Equatable, Sendable {
+    /// No real break is forecast: it is the same precipitation going on.
+    case continues
+    /// It gets heavier (or turns into a thunderstorm) from the period's start.
+    case intensifies
+    /// At least two dry hours are forecast first: it may stop and start again.
+    case resumes
+}
+
 public struct WindOutlook: Equatable, Sendable {
     public var maxSpeedKmh: Double
     public var maxGustKmh: Double?
@@ -80,6 +92,8 @@ public struct WeatherAnalysis: Equatable, Sendable {
 
     /// First continuous precipitation period in the rest of today, if any.
     public var precipitation: PrecipitationOutlook?
+    /// Set when it is precipitating now and `precipitation` starts at a later hour.
+    public var laterPrecipitation: LaterPrecipitationRelation?
     /// Hourly data covers the rest of today, so "no rain expected" can be stated.
     public var hasHourlyCoverage: Bool
     public var wind: WindOutlook?
@@ -161,6 +175,8 @@ public struct WeatherSummaryEngine: Sendable {
             feelsLikeIsNotable: feelsNotable,
             temperatureSwingIsNotable: swingNotable,
             precipitation: precipitation,
+            laterPrecipitation: laterPrecipitationRelation(current: current, outlook: precipitation,
+                                                           hours: remaining, hourStart: hourStart),
             hasHourlyCoverage: coverage,
             wind: wind,
             uvMax: uvMax,
@@ -260,6 +276,42 @@ public struct WeatherSummaryEngine: Sendable {
             totalMm: total,
             isLikely: effectiveMax >= thresholds.likelyPrecipitationProbability
         )
+    }
+
+    /// See `LaterPrecipitationRelation`. nil unless it is precipitating now and the outlook starts after
+    /// the current hour. The forecast already missed the current precipitation, so a single dry hour is
+    /// not trusted as a break; two or more are.
+    public func laterPrecipitationRelation(current: CurrentWeather, outlook: PrecipitationOutlook?,
+                                           hours: [HourlyForecast], hourStart: Date) -> LaterPrecipitationRelation? {
+        guard current.condition.isPrecipitation, let outlook, outlook.start > hourStart else { return nil }
+        if Self.strength(of: outlook) > Self.strength(of: current.condition) { return .intensifies }
+        let between = hours.filter { $0.time > hourStart && $0.time < outlook.start }
+        var dryRun = 0, longestDryRun = 0
+        for hour in between {
+            dryRun = isWetCandidate(hour) ? 0 : dryRun + 1
+            longestDryRun = max(longestDryRun, dryRun)
+        }
+        return longestDryRun >= 2 ? .resumes : .continues
+    }
+
+    /// drizzle 1 · rain/snow/sleet 2 · heavy 3 · thunderstorm 4
+    static func strength(of condition: WeatherCondition) -> Int {
+        switch condition {
+        case .drizzle: return 1
+        case .heavyRain: return 3
+        case .thunderstorm: return 4
+        default: return condition.isPrecipitation ? 2 : 0
+        }
+    }
+
+    /// Unknown intensity counts as ordinary (2) so it never claims "heavier".
+    static func strength(of outlook: PrecipitationOutlook) -> Int {
+        if outlook.kind == .thunderstorm { return 4 }
+        switch outlook.intensity {
+        case .heavy: return 3
+        case .light: return 1
+        case .moderate, .unknown: return 2
+        }
     }
 
     func intensity(for run: [HourlyForecast], maxRate: Double?) -> PrecipitationIntensity {

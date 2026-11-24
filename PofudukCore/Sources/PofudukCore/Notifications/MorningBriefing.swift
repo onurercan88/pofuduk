@@ -108,8 +108,19 @@ public struct MorningBriefingEngine: Sendable {
             }
         }
 
-        // Rain.
-        if let p {
+        // Rain. Precipitating now: never "başlıyor"/"beklenmiyor" as if it were dry (see LaterPrecipitationRelation).
+        let nowNoun = CharacterPersonalityEngine.precipitationNoun(analysis.current.condition)
+        if let p, p.isLikely, let relation = analysis.laterPrecipitation, let nowNoun {
+            let part = Self.dayPartPhrase(calendar.component(.hour, from: p.start))
+            switch relation {
+            case .continues: s.append("Şu sıralar \(nowNoun) var ve bir süre daha sürmesi bekleniyor.")
+            case .intensifies: s.append("Şu sıralar \(nowNoun) var; \(part) kuvvetlenmesi bekleniyor.")
+            case .resumes: s.append("Şu anki \(nowNoun) ara verebilir; \(part) yeniden başlaması bekleniyor.")
+            }
+            if p.intensity == .heavy { s.append("Yağışın yer yer kuvvetli olması bekleniyor.") }
+        } else if p == nil, analysis.hasHourlyCoverage, let nowNoun {
+            s.append("Şu sıralar \(nowNoun) var; ardından gün boyu başka yağış beklenmiyor.")
+        } else if let p {
             let part = Self.dayPartPhrase(calendar.component(.hour, from: p.start))
             let noun = p.kind == .snow ? "kar" : (p.kind == .thunderstorm ? "gök gürültülü sağanak" : "yağmur")
             if p.isLikely {

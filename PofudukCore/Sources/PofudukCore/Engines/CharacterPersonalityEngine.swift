@@ -209,8 +209,14 @@ public struct CharacterPersonalityEngine: Sendable {
         case .thunderstorm: noun = "gök gürültülü sağanak"
         }
 
+        // Precipitating now while the forecast's period starts later (the forecast missed this shower).
+        let nowNoun = Self.precipitationNoun(a.current.condition)
+
         guard p.isLikely else {
             let probabilityText = p.maxProbability.map { " yüzde \($0) civarında" } ?? ""
+            if a.laterPrecipitation != nil, let nowNoun {
+                return ["Şu sıralar \(nowNoun) var. Saat \(start) sonrasında da \(noun) ihtimali\(probabilityText)."]
+            }
             let when = startsNow ? "Önümüzdeki saatlerde" : "Saat \(start) sonrasında"
             return ["\(when) \(noun) ihtimali\(probabilityText). Kesin değil ama hazırlıklı olmakta fayda var."]
         }
@@ -223,10 +229,25 @@ public struct CharacterPersonalityEngine: Sendable {
         } else {
             durationText = duration >= 2 ? " ve yaklaşık \(duration) saat sürebilir" : ""
         }
-        if startsNow {
-            result.append("Şu sıralar \(noun) var\(durationText).")
-        } else {
-            result.append("Saat \(start) civarında \(noun) başlaması bekleniyor\(durationText).")
+        switch (a.laterPrecipitation, nowNoun) {
+        case (.continues?, let nowNoun?):
+            // Same precipitation going on: no new "start" time, just how long it may last.
+            let hoursLeft = max(1, Int((p.end.timeIntervalSince(a.analyzedAt) / 3600).rounded()))
+            let lasting = p.lastsUntilEndOfDay ? " ve gün sonuna kadar sürebilir"
+                : (hoursLeft >= 2 ? " ve yaklaşık \(hoursLeft) saat daha sürebilir" : "")
+            result.append("Şu sıralar \(nowNoun) var\(lasting).")
+        case (.intensifies?, let nowNoun?):
+            let change = p.kind == .thunderstorm && a.current.condition != .thunderstorm
+                ? "gök gürültülü sağanağa dönmesi" : "kuvvetlenmesi"
+            result.append("Şu sıralar \(nowNoun) var; saat \(start) civarında \(change) bekleniyor\(durationText).")
+        case (.resumes?, let nowNoun?):
+            result.append("Şu anki \(nowNoun) ara verebilir; saat \(start) civarında yeniden başlaması bekleniyor\(durationText).")
+        default:
+            if startsNow {
+                result.append("Şu sıralar \(noun) var\(durationText).")
+            } else {
+                result.append("Saat \(start) civarında \(noun) başlaması bekleniyor\(durationText).")
+            }
         }
 
         switch (p.kind, p.intensity) {
@@ -237,6 +258,19 @@ public struct CharacterPersonalityEngine: Sendable {
         case (_, .unknown): break
         }
         return result
+    }
+
+    /// What is falling right now, as a noun ("Şu sıralar yağmur var"); nil when dry.
+    static func precipitationNoun(_ condition: WeatherCondition) -> String? {
+        switch condition {
+        case .drizzle: return "çisenti"
+        case .rain: return "yağmur"
+        case .heavyRain: return "kuvvetli yağmur"
+        case .thunderstorm: return "gök gürültülü sağanak"
+        case .snow: return "kar"
+        case .sleet: return "karla karışık yağmur"
+        default: return nil
+        }
     }
 
     func windSentence(_ wind: WindOutlook) -> String {

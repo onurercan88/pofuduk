@@ -180,6 +180,26 @@ public struct WeatherAnswerEngine: Sendable {
             }
             let noun = p.kind == .snow ? "kar" : (p.kind == .thunderstorm ? "gök gürültülü sağanak" : "yağmur")
             let start = TurkishFormatting.clockTime(p.start, timeZone: tz)
+            // Precipitating now while the forecast's period starts later: don't announce a "start".
+            if c.precipitatingNow, let first = hours.first,
+               let relation = summary.laterPrecipitationRelation(current: c.snapshot.current, outlook: p,
+                                                                 hours: hours, hourStart: first.time),
+               let nowNoun = CharacterPersonalityEngine.precipitationNoun(c.snapshot.current.condition) {
+                guard p.isLikely else {
+                    let prob = p.maxProbability.map { " yüzde \($0) civarında" } ?? ""
+                    return ["Şu an \(nowNoun) var. Saat \(start) sonrasında da \(noun) ihtimali\(prob)."]
+                }
+                switch relation {
+                case .continues:
+                    return ["Şu an \(nowNoun) var ve sonraki saatlerde de sürmesi bekleniyor."]
+                case .intensifies:
+                    let change = p.kind == .thunderstorm && c.snapshot.current.condition != .thunderstorm
+                        ? "gök gürültülü sağanağa dönmesi" : "kuvvetlenmesi"
+                    return ["Şu an \(nowNoun) var; saat \(start) civarında \(change) bekleniyor."]
+                case .resumes:
+                    return ["Şu an \(nowNoun) var; ara verip saat \(start) civarında yeniden başlaması bekleniyor."]
+                }
+            }
             if !p.isLikely {
                 let prob = p.maxProbability.map { "yüzde \($0) civarında" } ?? "düşük"
                 return ["\(c.label) yağış ihtimali \(prob); kesin değil. En olası zaman saat \(start) civarı."]

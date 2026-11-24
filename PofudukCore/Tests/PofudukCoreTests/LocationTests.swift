@@ -54,6 +54,32 @@ final class LocationResolverTests: XCTestCase {
         XCTAssertEqual(r, .needsUserChoice(.gpsUnavailable))
     }
 
+    /// A failed fix falls back to the last GPS place if it is recent (labelled), never to an old or non-GPS one.
+    func testFailedFixUsesRecentLastKnownPlace() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var last = gpsPlace
+        last.source = .gps
+        func run(_ preference: LocationPreference, error: Error = LocationError.unavailable) async -> LocationResolution {
+            await resolver.resolve(preference: preference, permission: .authorized,
+                                   gps: { throw error }, ip: nil, now: now)
+        }
+        let recent = await run(LocationPreference(lastPlace: last, lastPlaceAt: now.addingTimeInterval(-3 * 3600)))
+        guard case .resolved(let place) = recent else { return XCTFail("\(recent)") }
+        XCTAssertEqual(place.name, "Kadıköy")
+        XCTAssertEqual(place.source, .lastKnown)
+
+        let old = await run(LocationPreference(lastPlace: last, lastPlaceAt: now.addingTimeInterval(-13 * 3600)))
+        XCTAssertEqual(old, .needsUserChoice(.gpsUnavailable))
+        let undated = await run(LocationPreference(lastPlace: last))
+        XCTAssertEqual(undated, .needsUserChoice(.gpsUnavailable))
+        var manual = last
+        manual.source = .manual
+        let notGPS = await run(LocationPreference(lastPlace: manual, lastPlaceAt: now))
+        XCTAssertEqual(notGPS, .needsUserChoice(.gpsUnavailable))
+        let denied = await run(LocationPreference(lastPlace: last, lastPlaceAt: now), error: LocationError.permissionDenied)
+        XCTAssertEqual(denied, .needsUserChoice(.permissionDenied))
+    }
+
     func testIPSelectedIsMarkedApproximate() async {
         guard case .resolved(let place) = await resolve(.ipApproximate, .denied) else { return XCTFail() }
         XCTAssertEqual(place.source, .ipApproximate)
