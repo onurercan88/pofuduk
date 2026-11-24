@@ -87,6 +87,27 @@ final class ConversationFlowTests: XCTestCase {
         XCTAssertTrue(dry.contains("yağış beklenmiyor"), dry)
     }
 
+    /// Today's daily probability also covers past hours; with dry remaining hours the umbrella advice
+    /// must not say "take one" next to "yağış beklenmiyor".
+    func testUmbrellaFollowsHourlyNotDailyProbability() {
+        var s = snapshot(.sunny)
+        s.daily[0].precipitationProbability = 70
+        let today = ResolvedQuery(topic: .umbrella, date: .today, dayPart: nil, province: nil)
+        XCTAssertEqual(answers.answer(today, snapshot: s, now: now).sentences,
+                       ["Şemsiyeye gerek yok gibi görünüyor.", "Bugün yağış beklenmiyor."])
+
+        s.current.condition = .rain
+        XCTAssertEqual(answers.answer(today, snapshot: s, now: now).sentences,
+                       ["Hemen çıkacaksan şemsiye iyi olur.", "Şu an yağış var ama sonraki saatlerde başka yağış beklenmiyor."])
+
+        // No hourly data that far ahead: the daily probability is all there is.
+        s.daily[3].precipitationProbability = 50
+        let later = ResolvedQuery(topic: .umbrella, date: .inDays(3), dayPart: nil, province: nil)
+        let text = answers.answer(later, snapshot: s, now: now).fullText
+        XCTAssertTrue(text.hasPrefix("Yanına bir şemsiye almanda fayda var."), text)
+        XCTAssertTrue(text.contains("yüzde 50"), text)
+    }
+
     func testFollowUpKeepsTomorrow() {
         var m = ConversationManager()
         _ = m.interpret("Yarın hava nasıl?", now: now)

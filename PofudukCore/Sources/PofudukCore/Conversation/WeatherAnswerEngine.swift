@@ -233,11 +233,15 @@ public struct WeatherAnswerEngine: Sendable {
 
     private func umbrella(_ c: DayContext) -> [String] {
         let rainInfo = rain(c, timing: true)
-        guard let p = c.hours.isEmpty ? nil : summary.precipitationOutlook(in: c.hours) else {
-            if let prob = c.daily?.precipitationProbability, prob >= thresholds.possiblePrecipitationProbability {
-                return ["Yanına bir şemsiye almanda fayda var."] + rainInfo
-            }
-            return c.hours.isEmpty && c.daily == nil ? [noData(c)] : ["Şemsiyeye gerek yok gibi görünüyor."] + rainInfo
+        // Same source as `rain`: hourly data decides when present. Today's daily probability also covers
+        // hours already past, so using it here would contradict "yağış beklenmiyor".
+        guard !c.hours.isEmpty else {
+            guard let prob = c.daily?.precipitationProbability else { return [noData(c)] }
+            return [prob >= thresholds.possiblePrecipitationProbability
+                    ? "Yanına bir şemsiye almanda fayda var." : "Şemsiyeye gerek yok gibi görünüyor."] + rainInfo
+        }
+        guard let p = summary.precipitationOutlook(in: c.hours) else {
+            return [c.precipitatingNow ? "Hemen çıkacaksan şemsiye iyi olur." : "Şemsiyeye gerek yok gibi görünüyor."] + rainInfo
         }
         return [p.isLikely ? "Evet, şemsiye almanı öneririm." : "Kesin değil ama yanına bir şemsiye alabilirsin."] + rainInfo
     }
