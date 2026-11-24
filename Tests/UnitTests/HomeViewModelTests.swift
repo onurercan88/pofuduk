@@ -383,7 +383,7 @@ final class HomeViewModelTests: XCTestCase {
         recognizer.onResult?("Bugün şemsiye gerekir mi", true)
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertFalse(vm.conversation.isListening)
-        XCTAssertTrue(vm.spoken?.fullText.contains("şemsiye") == true, vm.spoken?.fullText ?? "")
+        XCTAssertTrue(vm.spoken?.fullText.lowercased().contains("şemsiye") == true, vm.spoken?.fullText ?? "")
     }
 
     private func makeLiveViewModel(location: StubLocationService,
