@@ -76,23 +76,29 @@ final class ConversationViewModel {
             return
         }
         willListen()
+        isListening = true
         do {
-            try recognizer.start { [weak self] text, isFinal in
+            try await recognizer.start { [weak self] text, isFinal in
                 guard let self, self.isListening else { return }
-                self.inputText = text
+                // An error ends recognition with empty text; keep what was heard until then.
+                if !text.isEmpty || !isFinal { self.inputText = text }
                 if isFinal { self.finishListening() }
             }
-            isListening = true
-            if !recognizer.isOnDeviceSupported {
-                microphoneMessage = "Bu cihazda konuşman tanınmak üzere Apple'a gönderilir."
-            }
-            listenTimeout = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(10))
-                guard !Task.isCancelled else { return }
-                self?.finishListening()
-            }
         } catch {
+            isListening = false
+            recognizer.stop()
             microphoneMessage = "Şu an konuşma tanıma kullanılamıyor. Yazarak sorabilirsin."
+            return
+        }
+        // Tapped again while the microphone was still starting.
+        guard isListening else { recognizer.stop(); return }
+        if !recognizer.isOnDeviceSupported {
+            microphoneMessage = "Bu cihazda konuşman tanınmak üzere Apple'a gönderilir."
+        }
+        listenTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled else { return }
+            self?.finishListening()
         }
     }
 
@@ -101,6 +107,10 @@ final class ConversationViewModel {
         isListening = false
         listenTimeout?.cancel()
         recognizer.stop()
-        if canSend { Task { await send() } }
+        if canSend {
+            Task { await send() }
+        } else if inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            microphoneMessage = "Seni duyamadım. Tekrar dener misin? Yazarak da sorabilirsin."
+        }
     }
 }

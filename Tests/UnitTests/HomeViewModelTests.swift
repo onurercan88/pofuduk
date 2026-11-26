@@ -39,10 +39,15 @@ final class HomeViewModelTests: XCTestCase {
     final class StubRecognizer: SpeechRecognizing {
         var authorized = true
         var isOnDeviceSupported = true
+        var startError: Error?
         private(set) var onResult: ((String, Bool) -> Void)?
+        private(set) var stopCount = 0
         func requestAuthorization() async -> Bool { authorized }
-        func start(onResult: @escaping (String, Bool) -> Void) throws { self.onResult = onResult }
-        func stop() {}
+        func start(onResult: @escaping (String, Bool) -> Void) async throws {
+            if let startError { throw startError }
+            self.onResult = onResult
+        }
+        func stop() { stopCount += 1 }
     }
 
     private func makeDemoViewModel(speech: PreviewSpeechService, recognizer: StubRecognizer? = nil) -> HomeViewModel {
@@ -384,6 +389,32 @@ final class HomeViewModelTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertFalse(vm.conversation.isListening)
         XCTAssertTrue(vm.spoken?.fullText.lowercased().contains("şemsiye") == true, vm.spoken?.fullText ?? "")
+    }
+
+    func testMicrophoneStartFailureExplainsAndReleasesRecognizer() async {
+        let recognizer = StubRecognizer()
+        recognizer.startError = URLError(.unknown)
+        let vm = makeDemoViewModel(speech: PreviewSpeechService(), recognizer: recognizer)
+        await vm.conversation.toggleListening()
+        XCTAssertFalse(vm.conversation.isListening)
+        XCTAssertGreaterThan(recognizer.stopCount, 0, "A failed start must release the microphone")
+        XCTAssertTrue(vm.conversation.microphoneMessage?.contains("kullanılamıyor") == true)
+    }
+
+    func testNothingHeardSaysSoAndKeepsPartialText() async {
+        let recognizer = StubRecognizer()
+        let vm = makeDemoViewModel(speech: PreviewSpeechService(), recognizer: recognizer)
+        await vm.conversation.toggleListening()
+        recognizer.onResult?("", true)
+        XCTAssertFalse(vm.conversation.isListening)
+        XCTAssertTrue(vm.conversation.microphoneMessage?.contains("duyamadım") == true)
+
+        // A recognition error after partial results ends with empty text: what was heard is kept.
+        await vm.conversation.toggleListening()
+        recognizer.onResult?("Yarın hava", false)
+        recognizer.onResult?("", true)
+        XCTAssertFalse(vm.conversation.isListening)
+        XCTAssertFalse(vm.conversation.microphoneMessage?.contains("duyamadım") == true)
     }
 
     private func makeLiveViewModel(location: StubLocationService,
